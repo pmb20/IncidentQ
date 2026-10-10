@@ -1,0 +1,54 @@
+services:
+  # ---------------------------------------------------------------------------
+  # IncidentQ Backend Service (REST API, Telemetry, and Diagnostics Engine)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: incidentq-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health/db
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        value: 3306
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # IncidentQ Frontend Cockpit (Vite React Single Page Application)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: incidentq-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: incidentq-backend
+          envVarKey: RENDER_EXTERNAL_URL

@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Production build artifacts
+dist/
+frontend/dist/
+backend/target/
+build/
+
+# Databases and local persistence
+*.db
+*.sqlite
+incidentiq.db
+backend/incidentiq.db
+
+# Environment files
+.env
+.env*.local
+backend/.env
+frontend/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
