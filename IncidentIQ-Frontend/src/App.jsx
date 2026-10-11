@@ -1,31 +1,70 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import gsap from "gsap";
+import {
+  ShieldAlert,
+  Activity,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Search,
+  Plus,
+  LogOut,
+  Layers,
+  MessageSquare,
+  TrendingUp,
+  RefreshCw,
+  X,
+  Send,
+  Check,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Trash2,
+  SlidersHorizontal,
+  Lock,
+  Mail,
+  User,
+  ShieldCheck,
+  Server,
+  UploadCloud,
+  FileText,
+  Download,
+  Terminal,
+  Cpu,
+  ArrowRight
+} from "lucide-react";
 import "./dashboard.css";
 
-function App() {
-  /* =========================
-     LOGIN
-     ========================= */
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (
+  typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://incidentq-backend-api.onrender.com"
+    : "http://localhost:8080"
+);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [authPage, setAuthPage] = useState("login");
+export default function App() {
+  // ====================================================
+  // AUTHENTICATION STATE
+  // ====================================================
+  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [authMode, setAuthMode] = useState("login"); // 'login' | 'register'
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authRole, setAuthRole] = useState("Incident Operations Commander");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [activeNav, setActiveNav] = useState("overview");
-
-  /* =========================
-     INCIDENTS
-     ========================= */
-
-  const [incidents, setIncidents] = useState([]);
-  const [incidentLoading, setIncidentLoading] = useState(false);
-  const [incidentError, setIncidentError] = useState("");
+  // ====================================================
+  // DASHBOARD & INCIDENT DATA STATE
+  // ====================================================
   const [analytics, setAnalytics] = useState({
     totalIncidents: 0,
     openIncidents: 0,
@@ -33,6310 +72,2256 @@ function App() {
     resolvedIncidents: 0,
     criticalIncidents: 0,
     statusCounts: {},
-    priorityCounts: {},
     severityCounts: {},
   });
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState("");
-  const [searchTitle, setSearchTitle] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
-  const [selectedPriority, setSelectedPriority] = useState("");
-  const [selectedSeverity, setSelectedSeverity] = useState("");
+  const [incidents, setIncidents] = useState([]);
+  const [loadingIncidents, setLoadingIncidents] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
-  const [activeIncidentFilters, setActiveIncidentFilters] =
-    useState({
-      title: "",
-      status: "",
-      priority: "",
-      severity: "",
-    });
+  // Filters & Search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState("");
+  const [environmentFilter, setEnvironmentFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
-  const [incidentPage, setIncidentPage] = useState({
-    number: 0,
-    size: 10,
-    totalPages: 0,
-    totalElements: 0,
-    first: true,
-    last: true,
-  });
+  // Slide-over Workspace State
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [drawerTab, setDrawerTab] = useState("overview"); // overview, diagnostics, audit, comments, resolutions
+  const [similarIncidents, setSimilarIncidents] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [resolutions, setResolutions] = useState([]);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [newResolutionText, setNewResolutionText] = useState("");
 
-  const incidentRequestIdRef = useRef(0);
+  // Diagnostics / RCA State
+  const [diagnosticsResult, setDiagnosticsResult] = useState(null);
+  const [troubleshootingRunbook, setTroubleshootingRunbook] = useState(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [scanningEffect, setScanningEffect] = useState(false);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  const [selectedIncident, setSelectedIncident] =
-    useState(null);
-  const [activeIncidentSection, setActiveIncidentSection] =
-    useState("overview");
-
-  const [detailsLoading, setDetailsLoading] =
-    useState(false);
-
-  const incidentDetailsRef = useRef(null);
-
-  const [aiAnalysis, setAiAnalysis] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const aiRequestIdRef = useRef(0);
-  const [aiTroubleshooting, setAiTroubleshooting] = useState(null);
-  const [troubleshootingLoading, setTroubleshootingLoading] = useState(false);
-  const [troubleshootingError, setTroubleshootingError] = useState("");
-  const troubleshootingRequestIdRef = useRef(0);
-  const [similarIncidents, setSimilarIncidents] = useState(null);
-  const [similarIncidentsLoading, setSimilarIncidentsLoading] = useState(false);
-  const [similarIncidentsError, setSimilarIncidentsError] = useState("");
-  const similarIncidentsRequestIdRef = useRef(0);
-  const intelligenceRequestIdRef = useRef(0);
-  const [auditHistory, setAuditHistory] = useState([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState("");
-  const auditRequestIdRef = useRef(0);
-  const [statusUpdating, setStatusUpdating] = useState(false);
-  const [statusError, setStatusError] = useState("");
-
-  /* =========================
-     CREATE INCIDENT
-     ========================= */
-
-  const [newIncident, setNewIncident] = useState({
+  // Create Incident Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
     title: "",
     description: "",
-    category: "",
-    priority: "MEDIUM",
+    environment: "PRODUCTION",
+    error_message: "",
+    logs: "",
+    category: "INFRASTRUCTURE",
     severity: "MEDIUM",
-    status: "OPEN",
-    reporter: "bcrypttest@gmail.com",
-    assignee: "",
+    assignee: "alex.chen@incidentq.com",
   });
+  const [creating, setCreating] = useState(false);
 
-  /* =========================
-     UPDATE INCIDENT
-     ========================= */
+  // Ingestion & Upload Modal State
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadTab, setUploadTab] = useState("file"); // 'file' | 'log'
+  const [uploadFile, setUploadFile] = useState(null);
+  const [parsedPreview, setParsedPreview] = useState([]);
+  const [rawLogText, setRawLogText] = useState("");
+  const [rawLogTitle, setRawLogTitle] = useState("");
+  const [rawLogSeverity, setRawLogSeverity] = useState("HIGH");
+  const [rawLogEnv, setRawLogEnv] = useState("PRODUCTION");
+  const [uploading, setUploading] = useState(false);
 
-  const [editingIncident, setEditingIncident] =
-    useState(false);
+  // Reset Confirmation Modal State
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const [updateLoading, setUpdateLoading] =
-    useState(false);
+  // Toast Notification System
+  const [toasts, setToasts] = useState([]);
 
-  /* =========================
-     ASSIGN INCIDENT
-     ========================= */
+  // DOM Refs for GSAP
+  const kpiGridRef = useRef(null);
+  const tableContainerRef = useRef(null);
+  const drawerRef = useRef(null);
+  const modalRef = useRef(null);
+  const uploadModalRef = useRef(null);
+  const diagCardRef = useRef(null);
 
-  const [assigningIncident, setAssigningIncident] =
-    useState(false);
-
-  const [assigneeInput, setAssigneeInput] =
-    useState("");
-
-  /* =========================
-     COMMENTS
-     ========================= */
-
-  const [comments, setComments] = useState([]);
-
-  const [commentsLoading, setCommentsLoading] =
-    useState(false);
-
-  const [newComment, setNewComment] =
-    useState("");
-
-  const [commentLoading, setCommentLoading] =
-    useState(false);
-
-  /* =========================
-     RESOLUTIONS
-     ========================= */
-
-  const [resolutions, setResolutions] =
-    useState([]);
-
-  const [resolutionsLoading, setResolutionsLoading] =
-    useState(false);
-
-  const [newResolution, setNewResolution] =
-    useState("");
-
-  const [resolutionLoading, setResolutionLoading] =
-    useState(false);
-
-  /* =========================
-     ATTACHMENTS
-     ========================= */
-
-  const [attachments, setAttachments] =
-    useState([]);
-
-  const [attachmentsLoading, setAttachmentsLoading] =
-    useState(false);
-
-  const [selectedFile, setSelectedFile] =
-    useState(null);
-
-  const [attachmentUploading, setAttachmentUploading] =
-    useState(false);
-
-  const [attachmentMessage, setAttachmentMessage] =
-    useState("");
-
-  const [attachmentMessageType, setAttachmentMessageType] =
-    useState("");
-
-  const attachmentFileInputRef = useRef(null);
-
-  const attachmentRequestIdRef = useRef(0);
-
-  /* =========================
-     LOGIN
-     ========================= */
-
-  const login = async (event) => {
-    event.preventDefault();
-
-    setMessage("");
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/users/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password: password.trim(),
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(
-          data.message ||
-            data.error ||
-            "Login failed."
-        );
-
-        setMessageType("error");
-
-        return;
-      }
-
-      localStorage.setItem(
-        "token",
-        data.token
-      );
-
-      localStorage.setItem(
-        "userEmail",
-        email.trim().toLowerCase()
-      );
-
-      setLoggedIn(true);
-
-      setMessage("Login successful!");
-      setMessageType("success");
-
-      await Promise.all([
-        loadIncidents(data.token),
-        loadAnalytics(),
-      ]);
-    } catch (error) {
-      console.error(
-        "Login error:",
-        error
-      );
-
-      setMessage(
-        "Unable to connect to the backend. Make sure Spring Boot is running."
-      );
-
-      setMessageType("error");
-    } finally {
-      setLoading(false);
-    }
+  // ====================================================
+  // TOAST TRIGGER
+  // ====================================================
+  const showToast = (message, type = "info") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
   };
 
-  const register = async (event) => {
-    event.preventDefault();
-
-    setMessage("");
-    setLoading(true);
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/users",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: name.trim(),
-            email: email.trim(),
-            password,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(
-          data.message ||
-            data.error ||
-            "Registration failed."
-        );
-        setMessageType("error");
-        return;
-      }
-
-      setEmail(email.trim());
-      setPassword("");
-      setName("");
-      setAuthPage("login");
-      setMessage("Account created. Sign in with your new credentials.");
-      setMessageType("success");
-    } catch (error) {
-      console.error("Registration error:", error);
-      setMessage(
-        "Unable to connect to the backend. Make sure Spring Boot is running."
-      );
-      setMessageType("error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* =========================
-     LOAD ALL INCIDENTS
-     ========================= */
-
-  const loadIncidents = async (
-    jwtToken = localStorage.getItem("token"),
-    filters = activeIncidentFilters,
-    pageNumber = incidentPage.number
-  ) => {
-    if (!jwtToken) {
-      setIncidentError(
-        "Please login again to load incidents."
-      );
+  // ====================================================
+  // AUTHENTICATION HANDLERS
+  // ====================================================
+  const handleLogin = async (e) => {
+    e?.preventDefault();
+    if (!authEmail.trim() || !authPassword.trim()) {
+      showToast("Please enter your work email and password", "error");
       return;
     }
-
-    const requestId =
-      ++incidentRequestIdRef.current;
-
-    setIncidentLoading(true);
-    setIncidentError("");
-
+    setAuthLoading(true);
     try {
-      const query = new URLSearchParams();
-      const title = filters.title.trim();
-
-      if (title) {
-        query.set("title", title);
-      }
-
-      if (filters.status) {
-        query.set("status", filters.status);
-      }
-
-      if (filters.priority) {
-        query.set("priority", filters.priority);
-      }
-
-      if (filters.severity) {
-        query.set("severity", filters.severity);
-      }
-
-      query.set("page", String(pageNumber));
-      query.set("size", "10");
-
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/filter?${query.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${jwtToken}`,
-          },
-        }
-      );
-
-      if (requestId !== incidentRequestIdRef.current) {
-        return;
-      }
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Failed to load incidents:",
-          response.status,
-          errorText
-        );
-
-        setIncidents([]);
-        setIncidentPage({
-          number: 0,
-          size: 10,
-          totalPages: 0,
-          totalElements: 0,
-          first: true,
-          last: true,
-        });
-        setIncidentError(
-          response.status === 401 ||
-            response.status === 403
-            ? "Your session is no longer authorized. Please login again."
-            : "Unable to load incidents. Please try again."
-        );
-
-        return;
-      }
-
-      const data = await response.json();
-
-      if (requestId !== incidentRequestIdRef.current) {
-        return;
-      }
-
-      if (
-        !data ||
-        !Array.isArray(data.content) ||
-        !Number.isInteger(data.number) ||
-        !Number.isInteger(data.size) ||
-        !Number.isInteger(data.totalPages) ||
-        !Number.isFinite(data.totalElements) ||
-        typeof data.first !== "boolean" ||
-        typeof data.last !== "boolean"
-      ) {
-        throw new Error(
-          "The incident filter endpoint returned an invalid page response."
-        );
-      }
-
-      if (
-        data.content.length === 0 &&
-        data.totalPages > 0 &&
-        pageNumber >= data.totalPages
-      ) {
-        await loadIncidents(
-          jwtToken,
-          filters,
-          data.totalPages - 1
-        );
-        return;
-      }
-
-      setIncidents(
-        data.content
-      );
-      setIncidentPage({
-        number: data.number,
-        size: data.size,
-        totalPages: data.totalPages,
-        totalElements: data.totalElements,
-        first: data.first,
-        last: data.last,
+      const res = await fetch(`${API_BASE}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail.trim(), password: authPassword }),
       });
-    } catch (error) {
-      console.error(
-        "Incident loading error:",
-        error
-      );
-
-      if (requestId === incidentRequestIdRef.current) {
-        setIncidents([]);
-        setIncidentError(
-          error instanceof SyntaxError
-            ? "The backend returned an invalid incident response."
-            : error instanceof Error &&
-                error.message.includes(
-                  "invalid page response"
-                )
-              ? error.message
-              : "Unable to connect to the backend while loading incidents."
-        );
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || "Invalid corporate credentials", "error");
+        return;
       }
+      if (rememberMe) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+      }
+      setToken(data.token);
+      setCurrentUser(data.user);
+      showToast(`Welcome back, ${data.user?.name || "Commander"}`, "success");
+    } catch {
+      showToast("Identity authentication service offline. Check connectivity.", "error");
     } finally {
-      if (requestId === incidentRequestIdRef.current) {
-        setIncidentLoading(false);
-      }
+      setAuthLoading(false);
     }
   };
 
-  const loadAnalytics = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setAnalyticsError("Please login again to load analytics.");
+  const handleRegister = async (e) => {
+    e?.preventDefault();
+    if (!authName.trim() || !authEmail.trim() || !authPassword.trim()) {
+      showToast("All fields are required to register an account", "error");
       return;
     }
-
-    setAnalyticsLoading(true);
-    setAnalyticsError("");
-
+    setAuthLoading(true);
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/incidents/analytics",
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        console.error(
-          "Failed to load analytics:",
-          response.status
-        );
-        setAnalyticsError(
-          response.status === 401 || response.status === 403
-            ? "Your session is no longer authorized. Please login again."
-            : "Unable to load analytics. Please try again."
-        );
-        return;
-      }
-
-      const data = await response.json();
-      const countMaps = [
-        data?.statusCounts,
-        data?.priorityCounts,
-        data?.severityCounts,
-      ];
-
-      if (
-        !data ||
-        ![
-          data.totalIncidents,
-          data.openIncidents,
-          data.inProgressIncidents,
-          data.resolvedIncidents,
-          data.criticalIncidents,
-        ].every(Number.isFinite) ||
-        !countMaps.every(
-          (counts) =>
-            counts !== null &&
-            typeof counts === "object" &&
-            !Array.isArray(counts) &&
-            Object.values(counts).every(Number.isFinite)
-        )
-      ) {
-        throw new Error(
-          "The analytics endpoint returned an invalid response."
-        );
-      }
-
-      setAnalytics(data);
-    } catch (error) {
-      console.error("Analytics loading error:", error);
-      setAnalyticsError(
-        error instanceof Error &&
-          error.message.includes("invalid response")
-          ? error.message
-          : "Unable to connect to the backend while loading analytics."
-      );
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
-
-  const applyIncidentFilters = (event) => {
-    event.preventDefault();
-
-    const filters = {
-      title: searchTitle.trim(),
-      status: selectedStatus,
-      priority: selectedPriority,
-      severity: selectedSeverity,
-    };
-
-    setActiveIncidentFilters(filters);
-    loadIncidents(
-      localStorage.getItem("token"),
-      filters,
-      0
-    );
-  };
-
-  const loadAuditHistory = async (incidentId) => {
-    const token = localStorage.getItem("token");
-    const requestId = ++auditRequestIdRef.current;
-    if (!token) {
-      setAuditHistory([]);
-      setAuditError("Your session has expired. Please login again.");
-      return;
-    }
-
-    setAuditLoading(true);
-    setAuditError("");
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${incidentId}/audit`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const result = await response.json().catch(() => null);
-
-      if (requestId !== auditRequestIdRef.current) {
-        return;
-      }
-      if (!response.ok) {
-        setAuditHistory([]);
-        setAuditError(
-          response.status === 401 || response.status === 403
-            ? "You are not authorized to view this audit history. Please login again."
-            : "Unable to load incident audit history."
-        );
-        return;
-      }
-      if (!Array.isArray(result)) {
-        setAuditHistory([]);
-        setAuditError("The audit history endpoint returned an invalid response.");
-        return;
-      }
-      setAuditHistory(result);
-    } catch (error) {
-      console.error("Incident audit history request failed:", error);
-      if (requestId === auditRequestIdRef.current) {
-        setAuditHistory([]);
-        setAuditError("Unable to connect to the backend while loading audit history.");
-      }
-    } finally {
-      if (requestId === auditRequestIdRef.current) {
-        setAuditLoading(false);
-      }
-    }
-  };
-
-  const clearIncidentFilters = () => {
-    const filters = {
-      title: "",
-      status: "",
-      priority: "",
-      severity: "",
-    };
-
-    setSearchTitle("");
-    setSelectedStatus("");
-    setSelectedPriority("");
-    setSelectedSeverity("");
-    setActiveIncidentFilters(filters);
-    loadIncidents(
-      localStorage.getItem("token"),
-      filters,
-      0
-    );
-  };
-
-  /* =========================
-     LOAD INCIDENT DETAILS
-     ========================= */
-
-  const loadIncidentDetails = async (id) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    console.log(
-      "Loading incident:",
-      id
-    );
-
-    setDetailsLoading(true);
-    setActiveIncidentSection("overview");
-
-    intelligenceRequestIdRef.current += 1;
-    aiRequestIdRef.current += 1;
-    setAiAnalysis(null);
-    setAiLoading(false);
-    setAiError("");
-    troubleshootingRequestIdRef.current += 1;
-    setAiTroubleshooting(null);
-    setTroubleshootingLoading(false);
-    setTroubleshootingError("");
-    similarIncidentsRequestIdRef.current += 1;
-    setSimilarIncidents(null);
-    setSimilarIncidentsLoading(false);
-    setSimilarIncidentsError("");
-    auditRequestIdRef.current += 1;
-    setAuditHistory([]);
-    setAuditLoading(false);
-    setAuditError("");
-    setStatusError("");
-
-    attachmentRequestIdRef.current += 1;
-
-    setSelectedIncident(null);
-
-    setComments([]);
-
-    setResolutions([]);
-
-    setAttachments([]);
-
-    setSelectedFile(null);
-
-    setAttachmentMessage("");
-    setAttachmentMessageType("");
-    setAttachmentsLoading(false);
-
-    if (attachmentFileInputRef.current) {
-      attachmentFileInputRef.current.value = "";
-    }
-
-    setNewComment("");
-
-    setNewResolution("");
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${id}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      console.log(
-        "Incident details response:",
-        response.status
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Failed to load incident:",
-          errorText
-        );
-
-        alert(
-          "Unable to load incident details."
-        );
-
-        return;
-      }
-
-      const data =
-        await response.json();
-
-      console.log(
-        "Incident details:",
-        data
-      );
-
-      setSelectedIncident(data);
-
-      setAssigneeInput(
-        data.assignee || ""
-      );
-
-      await loadAuditHistory(data.id);
-      await loadComments(data.id);
-
-      await loadResolutions(data.id);
-
-      await loadAttachments(data.id);
-    } catch (error) {
-      console.error(
-        "Incident details error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    } finally {
-      setDetailsLoading(false);
-    }
-  };
-
-  const analyzeSelectedIncident = async () => {
-    if (!selectedIncident) {
-      setAiError("Open an incident before requesting AI analysis.");
-      return null;
-    }
-
-    const description =
-      selectedIncident.description?.trim();
-
-    if (!description) {
-      setAiAnalysis(null);
-      setAiError(
-        "Add an incident description before requesting AI analysis."
-      );
-      return null;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      setAiAnalysis(null);
-      setAiError(
-        "Your session has expired. Please login again."
-      );
-      return null;
-    }
-
-    const requestId =
-      ++aiRequestIdRef.current;
-
-    troubleshootingRequestIdRef.current += 1;
-    setAiTroubleshooting(null);
-    setTroubleshootingLoading(false);
-    setTroubleshootingError("");
-    setAiAnalysis(null);
-    setAiError("");
-    setAiLoading(true);
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/ai/analyze",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            incidentId: selectedIncident.id,
-            description,
-          }),
-        }
-      );
-
-      const result = await response.json().catch(() => null);
-
-      if (requestId !== aiRequestIdRef.current) {
-        return null;
-      }
-
-      if (!response.ok) {
-        setAiError(
-          response.status === 401 ||
-            response.status === 403
-            ? "You are not authorized to analyze this incident. Please login again."
-            : typeof result?.error === "string"
-              ? result.error
-              : "Unable to analyze this incident. Please try again."
-        );
-        return null;
-      }
-
-      const expectedFields = [
-        "category",
-        "severity",
-        "priority",
-        "possibleCause",
-        "rootCause",
-        "recommendedActions",
-        "summary",
-      ];
-      const analysis = result?.analysis;
-      const updatedIncident = result?.incident;
-      const validAnalysis =
-        result !== null &&
-        typeof result === "object" &&
-        !Array.isArray(result) &&
-        Object.keys(result).length === 2 &&
-        Object.prototype.hasOwnProperty.call(result, "analysis") &&
-        Object.prototype.hasOwnProperty.call(result, "incident") &&
-        analysis !== null &&
-        typeof analysis === "object" &&
-        !Array.isArray(analysis) &&
-        Object.keys(analysis).length === expectedFields.length &&
-        expectedFields.every((field) =>
-          Object.prototype.hasOwnProperty.call(analysis, field)
-        ) &&
-        expectedFields
-          .filter((field) => field !== "recommendedActions")
-          .every(
-            (field) =>
-              typeof analysis[field] === "string" &&
-              analysis[field].trim().length > 0
-          ) &&
-        Array.isArray(analysis.recommendedActions) &&
-        analysis.recommendedActions.length === 3 &&
-        analysis.recommendedActions.every(
-          (action) =>
-            typeof action === "string" &&
-            action.trim().length > 0
-        ) &&
-        updatedIncident !== null &&
-        typeof updatedIncident === "object" &&
-        updatedIncident.id === selectedIncident.id &&
-        updatedIncident.category === analysis.category &&
-        updatedIncident.severity === analysis.severity &&
-        updatedIncident.priority === analysis.priority;
-
-      if (!validAnalysis) {
-        setAiError(
-          "The AI returned an invalid analysis response. Please try again."
-        );
-        return null;
-      }
-
-      setSelectedIncident(updatedIncident);
-      setIncidents((currentIncidents) =>
-        currentIncidents.map((incident) =>
-          incident.id === updatedIncident.id
-            ? updatedIncident
-            : incident
-        )
-      );
-      setAiAnalysis(analysis);
-      return analysis;
-    } catch (error) {
-      console.error("Incident AI analysis failed:", error);
-
-      if (requestId === aiRequestIdRef.current) {
-        setAiError(
-          "Unable to analyze this incident. Please try again."
-        );
-      }
-      return null;
-    } finally {
-      if (requestId === aiRequestIdRef.current) {
-        setAiLoading(false);
-      }
-    }
-  };
-
-  const getAiTroubleshooting = async (analysis = aiAnalysis) => {
-    if (!selectedIncident) {
-      setTroubleshootingError("Open an incident before requesting troubleshooting.");
-      return null;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setTroubleshootingError("Your session has expired. Please login again.");
-      return null;
-    }
-
-    const requestId = ++troubleshootingRequestIdRef.current;
-    setAiTroubleshooting(null);
-    setTroubleshootingError("");
-    setTroubleshootingLoading(true);
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/ai/troubleshoot",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            incidentId: selectedIncident.id,
-            possibleCause: analysis?.possibleCause,
-            rootCause: analysis?.rootCause,
-            recommendedActions: analysis?.recommendedActions,
-            summary: analysis?.summary,
-          }),
-        }
-      );
-      const result = await response.json().catch(() => null);
-
-      if (requestId !== troubleshootingRequestIdRef.current) {
-        return null;
-      }
-
-      if (!response.ok) {
-        setTroubleshootingError(
-          response.status === 401 || response.status === 403
-            ? "You are not authorized to request troubleshooting. Please login again."
-            : typeof result?.error === "string"
-              ? result.error
-              : "Unable to get AI troubleshooting. Please try again."
-        );
-        return null;
-      }
-
-      const expectedFields = [
-        "troubleshootingSteps",
-        "suggestedResolution",
-        "verificationSteps",
-      ];
-      const validResponse =
-        result !== null &&
-        typeof result === "object" &&
-        !Array.isArray(result) &&
-        Object.keys(result).length === expectedFields.length &&
-        expectedFields.every((field) =>
-          Object.prototype.hasOwnProperty.call(result, field)
-        ) &&
-        Array.isArray(result.troubleshootingSteps) &&
-        result.troubleshootingSteps.length === 4 &&
-        result.troubleshootingSteps.every(
-          (step) => typeof step === "string" && step.trim().length > 0
-        ) &&
-        typeof result.suggestedResolution === "string" &&
-        result.suggestedResolution.trim().length > 0 &&
-        Array.isArray(result.verificationSteps) &&
-        result.verificationSteps.length === 2 &&
-        result.verificationSteps.every(
-          (step) => typeof step === "string" && step.trim().length > 0
-        );
-
-      if (!validResponse) {
-        setTroubleshootingError(
-          "The AI returned an invalid troubleshooting response. Please try again."
-        );
-        return null;
-      }
-
-      setAiTroubleshooting(result);
-      return result;
-    } catch (error) {
-      console.error("Incident AI troubleshooting failed:", error);
-      if (requestId === troubleshootingRequestIdRef.current) {
-        setTroubleshootingError(
-          "Unable to get AI troubleshooting. Please try again."
-        );
-      }
-      return null;
-    } finally {
-      if (requestId === troubleshootingRequestIdRef.current) {
-        setTroubleshootingLoading(false);
-      }
-    }
-  };
-
-  const getAvailableStatusTransitions = (status) => {
-    switch (status) {
-      case "OPEN":
-        return ["IN_PROGRESS", "RESOLVED"];
-      case "IN_PROGRESS":
-        return ["RESOLVED"];
-      case "RESOLVED":
-        return ["CLOSED"];
-      default:
-        return [];
-    }
-  };
-
-  const updateIncidentStatus = async (status) => {
-    if (!selectedIncident) {
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setStatusError("Your session has expired. Please login again.");
-      return;
-    }
-
-    setStatusUpdating(true);
-    setStatusError("");
-    try {
-      let response;
-      try {
-        response = await fetch(
-          `http://localhost:8080/api/incidents/${selectedIncident.id}/status?status=${encodeURIComponent(status)}`,
-          {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-      } catch (error) {
-        console.error("Incident status request failed:", error);
-        setStatusError("Unable to connect to the backend while updating status.");
-        return;
-      }
-
-      let result = null;
-      try {
-        result = await response.json();
-      } catch (error) {
-        console.error("Unable to read incident status response:", error);
-      }
-
-      if (!response.ok) {
-        setStatusError(
-          typeof result?.error === "string"
-            ? result.error
-            : response.status === 401 || response.status === 403
-              ? "You are not authorized to change this incident status."
-              : "Unable to update incident status."
-        );
-        return;
-      }
-
-      const updatedIncident =
-        result?.incident ??
-        result?.data ??
-        result;
-      if (
-        updatedIncident === null ||
-        typeof updatedIncident !== "object" ||
-        Array.isArray(updatedIncident) ||
-        String(updatedIncident.id) !== String(selectedIncident.id)
-      ) {
-        setStatusError(
-          "The status was updated, but the backend returned an invalid incident response."
-        );
-        await loadAuditHistory(selectedIncident.id);
-        return;
-      }
-
-      const refreshedIncident = {
-        ...selectedIncident,
-        ...updatedIncident,
-        status: updatedIncident.status || status,
-      };
-      setSelectedIncident(refreshedIncident);
-      setIncidents((currentIncidents) =>
-        currentIncidents.map((incident) =>
-          String(incident.id) === String(refreshedIncident.id)
-            ? refreshedIncident
-            : incident
-        )
-      );
-      setStatusError("");
-      await loadAuditHistory(refreshedIncident.id);
-    } finally {
-      setStatusUpdating(false);
-    }
-  };
-
-  const findSimilarIncidents = async () => {
-    if (!selectedIncident) {
-      setSimilarIncidentsError("Open an incident before searching for similar incidents.");
-      return null;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setSimilarIncidentsError("Your session has expired. Please login again.");
-      return null;
-    }
-
-    const requestId = ++similarIncidentsRequestIdRef.current;
-    setSimilarIncidents(null);
-    setSimilarIncidentsError("");
-    setSimilarIncidentsLoading(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${selectedIncident.id}/similar`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const result = await response.json().catch(() => null);
-
-      if (requestId !== similarIncidentsRequestIdRef.current) {
-        return null;
-      }
-
-      if (!response.ok) {
-        setSimilarIncidentsError(
-          response.status === 401 || response.status === 403
-            ? "You are not authorized to search similar incidents. Please login again."
-            : typeof result?.error === "string"
-              ? result.error
-              : response.status === 404
-                ? "The selected incident could not be found."
-                : "Unable to find similar incidents. Please try again."
-        );
-        return null;
-      }
-
-      const validResults =
-        Array.isArray(result) &&
-        result.every(
-          (incident) =>
-            incident !== null &&
-            typeof incident === "object" &&
-            Number.isInteger(incident.incidentId) &&
-            incident.incidentId !== selectedIncident.id &&
-            typeof incident.title === "string" &&
-            typeof incident.similarityScore === "number" &&
-            incident.similarityScore >= 0 &&
-            incident.similarityScore <= 100 &&
-            ["category", "priority", "severity", "status"].every(
-              (field) =>
-                incident[field] === null ||
-                typeof incident[field] === "string"
-            )
-        );
-
-      if (!validResults) {
-        setSimilarIncidentsError(
-          "The similar incidents endpoint returned an invalid response."
-        );
-        return null;
-      }
-
-      setSimilarIncidents(result);
-      return result;
-    } catch (error) {
-      console.error("Similar incidents request failed:", error);
-      if (requestId === similarIncidentsRequestIdRef.current) {
-        setSimilarIncidentsError(
-          "Unable to connect to the backend while searching similar incidents."
-        );
-      }
-      return null;
-    } finally {
-      if (requestId === similarIncidentsRequestIdRef.current) {
-        setSimilarIncidentsLoading(false);
-      }
-    }
-  };
-
-  const analyzeIncidentIntelligence = async () => {
-    if (!selectedIncident) {
-      return;
-    }
-
-    const requestId = ++intelligenceRequestIdRef.current;
-    setActiveIncidentSection("intelligence");
-
-    const similarRequest = findSimilarIncidents();
-    const analysis = await analyzeSelectedIncident();
-    if (requestId !== intelligenceRequestIdRef.current) {
-      return;
-    }
-    await getAiTroubleshooting(analysis);
-    await similarRequest;
-  };
-
-  /* =========================
-     CREATE INCIDENT
-     ========================= */
-
-  const createIncident = async (event) => {
-    event.preventDefault();
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        "http://localhost:8080/api/incidents",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(
-            newIncident
-          ),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Create incident failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to create incident."
-        );
-
-        return;
-      }
-
-      setShowCreateForm(false);
-
-      setNewIncident({
-        title: "",
-        description: "",
-        category: "",
-        priority: "MEDIUM",
-        severity: "MEDIUM",
-        status: "OPEN",
-        reporter: "bcrypttest@gmail.com",
-        assignee: "",
+      const res = await fetch(`${API_BASE}/api/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: authName.trim(),
+          email: authEmail.trim(),
+          password: authPassword,
+          role: authRole,
+        }),
       });
-
-      await loadIncidents(token);
-
-      alert(
-        "Incident created successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Create incident error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    }
-  };
-
-  /* =========================
-     UPDATE INCIDENT
-     ========================= */
-
-  const updateIncident = async (
-    event
-  ) => {
-    event.preventDefault();
-
-    if (!selectedIncident) {
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    setUpdateLoading(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${selectedIncident.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(
-            selectedIncident
-          ),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Update incident failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to update incident."
-        );
-
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || "Account creation failed", "error");
         return;
       }
-
-      const updated =
-        await response.json();
-
-      setSelectedIncident(updated);
-
-      setEditingIncident(false);
-
-      await loadIncidents(token);
-
-      alert(
-        "Incident updated successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Update incident error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
+      showToast("Account created. Authenticating session...", "success");
+      setAuthMode("login");
+      // Direct sign in
+      const loginRes = await fetch(`${API_BASE}/api/users/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: authEmail.trim(), password: authPassword }),
+      });
+      const loginData = await loginRes.json();
+      if (loginRes.ok) {
+        localStorage.setItem("token", loginData.token);
+        localStorage.setItem("user", JSON.stringify(loginData.user));
+        setToken(loginData.token);
+        setCurrentUser(loginData.user);
+      }
+    } catch {
+      showToast("Unable to complete registration. Try again.", "error");
     } finally {
-      setUpdateLoading(false);
+      setAuthLoading(false);
     }
   };
 
-  /* =========================
-     DELETE INCIDENT
-     ========================= */
-
-  const deleteIncident = async (
-    id
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this incident?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Delete incident failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to delete incident."
-        );
-
-        return;
-      }
-
-      setSelectedIncident(null);
-
-      setComments([]);
-
-      setResolutions([]);
-
-      setAttachments([]);
-
-      attachmentRequestIdRef.current += 1;
-
-      setSelectedFile(null);
-
-      setAttachmentMessage("");
-      setAttachmentMessageType("");
-      setAttachmentsLoading(false);
-
-      if (attachmentFileInputRef.current) {
-        attachmentFileInputRef.current.value = "";
-      }
-
-      await loadIncidents(token);
-
-      alert(
-        "Incident deleted successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Delete incident error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    }
-  };
-
-  /* =========================
-     ASSIGN INCIDENT
-     ========================= */
-
-  const assignIncident = async () => {
-    if (!selectedIncident) {
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    if (!assigneeInput.trim()) {
-      alert("Please enter an assignee.");
-      return;
-    }
-
-    setAssigningIncident(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/incidents/${selectedIncident.id}/assign?assignee=${encodeURIComponent(
-          assigneeInput.trim()
-        )}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Assign incident failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to assign incident."
-        );
-
-        return;
-      }
-
-      const updated =
-        await response.json();
-
-      setSelectedIncident(updated);
-
-      await loadIncidents(token);
-
-      alert(
-        "Incident assigned successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Assign incident error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    } finally {
-      setAssigningIncident(false);
-    }
-  };
-
-  /* =========================
-     LOAD COMMENTS
-     ========================= */
-
-  const loadComments = async (
-    incidentId
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token || !incidentId) {
-      return;
-    }
-
-    setCommentsLoading(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/comments/incident/${incidentId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Failed to load comments:",
-          errorText
-        );
-
-        setComments([]);
-
-        return;
-      }
-
-      const data =
-        await response.json();
-
-      setComments(
-        Array.isArray(data)
-          ? data
-          : []
-      );
-    } catch (error) {
-      console.error(
-        "Comment loading error:",
-        error
-      );
-
-      setComments([]);
-    } finally {
-      setCommentsLoading(false);
-    }
-  };
-
-  /* =========================
-     ADD COMMENT
-     ========================= */
-
-  const addComment = async (
-    event
-  ) => {
-    event.preventDefault();
-
-    if (!selectedIncident) {
-      return;
-    }
-
-    if (!newComment.trim()) {
-      alert("Please enter a comment.");
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    setCommentLoading(true);
-
-    try {
-      const userEmail =
-        localStorage.getItem(
-          "userEmail"
-        ) ||
-        email.trim().toLowerCase() ||
-        selectedIncident.reporter ||
-        "unknown@example.com";
-
-      const commentData = {
-        incidentId:
-          selectedIncident.id,
-
-        userEmail:
-          userEmail,
-
-        comment:
-          newComment.trim(),
-
-        createdAt:
-          new Date().toLocaleString(),
-      };
-
-      const response = await fetch(
-        "http://localhost:8080/api/comments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(
-            commentData
-          ),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Add comment failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to add comment."
-        );
-
-        return;
-      }
-
-      setNewComment("");
-
-      await loadComments(
-        selectedIncident.id
-      );
-
-      alert(
-        "Comment added successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Add comment error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    } finally {
-      setCommentLoading(false);
-    }
-  };
-
-  /* =========================
-     DELETE COMMENT
-     ========================= */
-
-  const deleteComment = async (
-    commentId
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this comment?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/comments/${commentId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Delete comment failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to delete comment."
-        );
-
-        return;
-      }
-
-      await loadComments(
-        selectedIncident.id
-      );
-
-      alert(
-        "Comment deleted successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Delete comment error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    }
-  };
-
-  /* =========================
-     LOAD RESOLUTIONS
-     ========================= */
-
-  const loadResolutions = async (
-    incidentId
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token || !incidentId) {
-      return;
-    }
-
-    setResolutionsLoading(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/resolutions/incident/${incidentId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Failed to load resolutions:",
-          errorText
-        );
-
-        setResolutions([]);
-
-        return;
-      }
-
-      const data =
-        await response.json();
-
-      setResolutions(
-        Array.isArray(data)
-          ? data
-          : []
-      );
-    } catch (error) {
-      console.error(
-        "Resolution loading error:",
-        error
-      );
-
-      setResolutions([]);
-    } finally {
-      setResolutionsLoading(false);
-    }
-  };
-
-  /* =========================
-     ADD RESOLUTION
-     ========================= */
-
-  const addResolution = async (
-    event
-  ) => {
-    event.preventDefault();
-
-    if (!selectedIncident) {
-      return;
-    }
-
-    if (!newResolution.trim()) {
-      alert(
-        "Please enter the resolution."
-      );
-
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    setResolutionLoading(true);
-
-    try {
-      const resolvedBy =
-        localStorage.getItem(
-          "userEmail"
-        ) ||
-        email.trim().toLowerCase() ||
-        selectedIncident.assignee ||
-        selectedIncident.reporter ||
-        "unknown@example.com";
-
-      const resolutionData = {
-        incidentId:
-          selectedIncident.id,
-
-        resolvedBy:
-          resolvedBy,
-
-        resolution:
-          newResolution.trim(),
-
-        resolvedAt:
-          new Date().toLocaleString(),
-      };
-
-      const response = await fetch(
-        "http://localhost:8080/api/resolutions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(
-            resolutionData
-          ),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Add resolution failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to add resolution."
-        );
-
-        return;
-      }
-
-      setNewResolution("");
-
-      await loadResolutions(
-        selectedIncident.id
-      );
-
-      alert(
-        "Resolution added successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Resolution error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    } finally {
-      setResolutionLoading(false);
-    }
-  };
-
-  /* =========================
-     DELETE RESOLUTION
-     ========================= */
-
-  const deleteResolution = async (
-    resolutionId
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      alert("Please login again.");
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this resolution?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/resolutions/${resolutionId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Delete resolution failed:",
-          errorText
-        );
-
-        alert(
-          "Failed to delete resolution."
-        );
-
-        return;
-      }
-
-      await loadResolutions(
-        selectedIncident.id
-      );
-
-      alert(
-        "Resolution deleted successfully!"
-      );
-    } catch (error) {
-      console.error(
-        "Delete resolution error:",
-        error
-      );
-
-      alert(
-        "Unable to connect to the backend."
-      );
-    }
-  };
-
-  /* =========================
-     LOAD ATTACHMENTS
-     ========================= */
-
-  const loadAttachments = async (
-    incidentId
-  ) => {
-    const requestId =
-      ++attachmentRequestIdRef.current;
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token || !incidentId) {
-      setAttachments([]);
-      setAttachmentsLoading(false);
-      return false;
-    }
-
-    setAttachmentsLoading(true);
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/attachments/incident/${incidentId}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (
-        requestId !==
-        attachmentRequestIdRef.current
-      ) {
-        return false;
-      }
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Failed to load attachments:",
-          errorText
-        );
-
-        setAttachments([]);
-        setAttachmentMessage(
-          "Unable to load attachments. Please try again."
-        );
-        setAttachmentMessageType("error");
-
-        return false;
-      }
-
-      const data =
-        await response.json();
-
-      if (
-        requestId !==
-        attachmentRequestIdRef.current
-      ) {
-        return false;
-      }
-
-      setAttachments(
-        Array.isArray(data)
-          ? data
-          : []
-      );
-
-      setAttachmentMessage("");
-      setAttachmentMessageType("");
-      setAttachmentsLoading(false);
-      return true;
-    } catch (error) {
-      if (
-        requestId !==
-        attachmentRequestIdRef.current
-      ) {
-        return false;
-      }
-
-      console.error(
-        "Attachment loading error:",
-        error
-      );
-
-      setAttachments([]);
-      setAttachmentMessage(
-        "Unable to connect to the backend while loading attachments."
-      );
-      setAttachmentMessageType("error");
-      return false;
-    } finally {
-      if (
-        requestId ===
-        attachmentRequestIdRef.current
-      ) {
-        setAttachmentsLoading(false);
-      }
-    }
-  };
-
-  /* =========================
-     UPLOAD ATTACHMENT
-     ========================= */
-
-  const uploadAttachment = async (event) => {
-    event.preventDefault();
-
-    if (!selectedIncident) {
-      setAttachmentMessage(
-        "Select an incident before uploading an attachment."
-      );
-      setAttachmentMessageType("error");
-      return;
-    }
-
-    if (!selectedFile) {
-      setAttachmentMessage(
-        "Choose a file before uploading."
-      );
-      setAttachmentMessageType("error");
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      setAttachmentMessage(
-        "Please login again before uploading an attachment."
-      );
-      setAttachmentMessageType("error");
-      return;
-    }
-
-    setAttachmentUploading(true);
-    setAttachmentMessage("");
-    setAttachmentMessageType("");
-
-    try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-
-      const uploadResponse = await fetch(
-        "http://localhost:8080/api/files/upload",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
-
-      const uploadResult =
-        await uploadResponse.text();
-
-      if (
-        !uploadResponse.ok ||
-        !uploadResult.startsWith(
-          "File uploaded successfully:"
-        )
-      ) {
-        console.error(
-          "Physical file upload failed:",
-          uploadResult
-        );
-
-        setAttachmentMessage(
-          uploadResult ||
-            "Failed to upload the file."
-        );
-        setAttachmentMessageType("error");
-        return;
-      }
-
-      const attachmentData = {
-        incidentId: selectedIncident.id,
-        fileName: selectedFile.name,
-        fileType:
-          selectedFile.type ||
-          "application/octet-stream",
-        filePath: `uploads/${selectedFile.name}`,
-        uploadedBy:
-          localStorage.getItem("userEmail") ||
-          "unknown@example.com",
-      };
-
-      const metadataResponse = await fetch(
-        "http://localhost:8080/api/attachments",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(attachmentData),
-        }
-      );
-
-      if (!metadataResponse.ok) {
-        const errorText =
-          await metadataResponse.text();
-
-        console.error(
-          "Saving attachment metadata failed:",
-          errorText
-        );
-
-        setAttachmentMessage(
-          "The file was uploaded, but saving its attachment details failed."
-        );
-        setAttachmentMessageType("error");
-        return;
-      }
-
-      setSelectedFile(null);
-
-      if (attachmentFileInputRef.current) {
-        attachmentFileInputRef.current.value = "";
-      }
-
-      const refreshed =
-        await loadAttachments(selectedIncident.id);
-
-      if (refreshed) {
-        setAttachmentMessage(
-          "Attachment uploaded successfully."
-        );
-        setAttachmentMessageType("success");
-      }
-    } catch (error) {
-      console.error(
-        "Attachment upload error:",
-        error
-      );
-
-      setAttachmentMessage(
-        "Unable to connect to the backend while uploading the attachment."
-      );
-      setAttachmentMessageType("error");
-    } finally {
-      setAttachmentUploading(false);
-    }
-  };
-
-  /* =========================
-     DELETE ATTACHMENT
-     ========================= */
-
-  const deleteAttachment = async (
-    attachmentId
-  ) => {
-    const token =
-      localStorage.getItem("token");
-
-    if (!token) {
-      setAttachmentMessage(
-        "Please login again before deleting an attachment."
-      );
-      setAttachmentMessageType("error");
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this attachment?"
-      );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/attachments/${attachmentId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText =
-          await response.text();
-
-        console.error(
-          "Delete attachment failed:",
-          errorText
-        );
-
-        setAttachmentMessage(
-          "Failed to delete the attachment."
-        );
-        setAttachmentMessageType("error");
-        return;
-      }
-
-      const refreshed = await loadAttachments(
-        selectedIncident.id
-      );
-
-      if (refreshed) {
-        setAttachmentMessage(
-          "Attachment deleted successfully."
-        );
-        setAttachmentMessageType("success");
-      }
-    } catch (error) {
-      console.error(
-        "Delete attachment error:",
-        error
-      );
-
-      setAttachmentMessage(
-        "Unable to connect to the backend while deleting the attachment."
-      );
-      setAttachmentMessageType("error");
-    }
-  };
-
-  /* =========================
-     LOGOUT
-     ========================= */
-
-  const logout = () => {
+  const handleLogout = () => {
     localStorage.removeItem("token");
-
-    localStorage.removeItem(
-      "userEmail"
-    );
-
-    setLoggedIn(false);
-
-    setIncidents([]);
-    setAnalytics({
-      totalIncidents: 0,
-      openIncidents: 0,
-      inProgressIncidents: 0,
-      resolvedIncidents: 0,
-      criticalIncidents: 0,
-      statusCounts: {},
-      priorityCounts: {},
-      severityCounts: {},
-    });
-    setAnalyticsError("");
-
+    localStorage.removeItem("user");
+    setToken("");
+    setCurrentUser(null);
     setSelectedIncident(null);
-
-    setShowCreateForm(false);
-
-    setComments([]);
-
-    setResolutions([]);
-
-    setAttachments([]);
-
-    attachmentRequestIdRef.current += 1;
-
-    setSelectedFile(null);
-
-    setAttachmentMessage("");
-    setAttachmentMessageType("");
-    setAttachmentsLoading(false);
-    setAttachmentUploading(false);
-
-    if (attachmentFileInputRef.current) {
-      attachmentFileInputRef.current.value = "";
-    }
-
-    setNewComment("");
-
-    setNewResolution("");
-
-    setEditingIncident(false);
+    showToast("Signed out of session safely", "info");
   };
 
-  /* =========================
-     CHECK SAVED LOGIN
-     ========================= */
-
-  useEffect(() => {
-    const token =
-      localStorage.getItem("token");
-
-    if (token) {
-      setLoggedIn(true);
-
-      loadIncidents(token);
-      loadAnalytics();
+  // ====================================================
+  // DATA RETRIEVAL
+  // ====================================================
+  const loadAnalytics = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/analytics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data);
+      }
+    } catch (err) {
+      console.warn("Analytics fetch error:", err);
     }
-  }, []);
+  };
 
-  /* =========================
-     SCROLL TO DETAILS
-     ========================= */
+  const loadIncidents = async (targetPage = page) => {
+    if (!token) return;
+    setLoadingIncidents(true);
+    try {
+      const query = new URLSearchParams({
+        page: String(targetPage),
+        size: "10",
+      });
+      if (searchQuery.trim()) query.set("title", searchQuery.trim());
+      if (statusFilter) query.set("status", statusFilter);
+      if (severityFilter) query.set("severity", severityFilter);
+
+      const res = await fetch(`${API_BASE}/api/incidents/filter?${query.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        let rows = data.content || [];
+        // Optional client-side filter for environment & category if backend is standard
+        if (environmentFilter) {
+          rows = rows.filter((r) => r.environment === environmentFilter);
+        }
+        if (categoryFilter) {
+          rows = rows.filter((r) => r.category === categoryFilter);
+        }
+        setIncidents(rows);
+        setPage(data.number || 0);
+        setTotalPages(data.totalPages || 1);
+        setTotalElements(data.totalElements || 0);
+      }
+    } catch {
+      showToast("Error retrieving incident log", "error");
+    } finally {
+      setLoadingIncidents(false);
+    }
+  };
 
   useEffect(() => {
-    if (
-      selectedIncident &&
-      !detailsLoading
-    ) {
-      incidentDetailsRef.current?.scrollIntoView(
-        {
-          behavior: "smooth",
-          block: "start",
-        }
+    if (token) {
+      loadAnalytics();
+      loadIncidents(0);
+    }
+  }, [token, statusFilter, severityFilter, environmentFilter, categoryFilter]);
+
+  useEffect(() => {
+    if (!token) return;
+    const timeout = setTimeout(() => {
+      loadIncidents(0);
+    }, 280);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  // GSAP Animations
+  useEffect(() => {
+    if (kpiGridRef.current) {
+      gsap.fromTo(
+        kpiGridRef.current.children,
+        { opacity: 0, y: 20, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.06, ease: "power2.out" }
       );
     }
-  }, [
-    selectedIncident,
-    detailsLoading,
-  ]);
+  }, [token]);
 
-  /* =========================
-     DASHBOARD
-     ========================= */
+  useEffect(() => {
+    if (tableContainerRef.current) {
+      const rows = tableContainerRef.current.querySelectorAll(".incident-row");
+      if (rows.length > 0) {
+        gsap.fromTo(
+          rows,
+          { opacity: 0, x: -8 },
+          { opacity: 1, x: 0, duration: 0.3, stagger: 0.03, ease: "power1.out" }
+        );
+      }
+    }
+  }, [incidents]);
 
-  if (loggedIn) {
+  // ====================================================
+  // INCIDENT DETAILS & SUB-DATA
+  // ====================================================
+  const openIncidentDetails = async (incident) => {
+    setSelectedIncident(incident);
+    setDrawerTab("overview");
+    setDiagnosticsResult(null);
+    setTroubleshootingRunbook(null);
+
+    setTimeout(() => {
+      if (drawerRef.current) {
+        gsap.fromTo(
+          drawerRef.current,
+          { x: "100%", opacity: 0 },
+          { x: "0%", opacity: 1, duration: 0.35, ease: "power3.out" }
+        );
+      }
+    }, 10);
+
+    fetchIncidentSubData(incident.id);
+  };
+
+  const fetchIncidentSubData = async (incidentId) => {
+    const authHeaders = { Authorization: `Bearer ${token}` };
+    try {
+      const [simRes, audRes, comRes, resRes] = await Promise.all([
+        fetch(`${API_BASE}/api/incidents/${incidentId}/similar`, { headers: authHeaders }),
+        fetch(`${API_BASE}/api/incidents/${incidentId}/audit`, { headers: authHeaders }),
+        fetch(`${API_BASE}/api/comments/incident/${incidentId}`, { headers: authHeaders }),
+        fetch(`${API_BASE}/api/resolutions/incident/${incidentId}`, { headers: authHeaders }),
+      ]);
+
+      if (simRes.ok) setSimilarIncidents(await simRes.json());
+      if (audRes.ok) setAuditLogs(await audRes.json());
+      if (comRes.ok) setComments(await comRes.json());
+      if (resRes.ok) setResolutions(await resRes.json());
+    } catch (err) {
+      console.warn("Sub-data fetch error:", err);
+    }
+  };
+
+  const handleUpdateStatus = async (newStatus) => {
+    if (!selectedIncident) return;
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/incidents/${selectedIncident.id}/status?status=${newStatus}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedIncident(updated);
+        setIncidents((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+        loadAnalytics();
+        fetchIncidentSubData(updated.id);
+        showToast(`Incident status updated to ${newStatus}`, "success");
+      }
+    } catch {
+      showToast("Status change failed", "error");
+    }
+  };
+
+  const handleUpdateAssignee = async (newAssignee) => {
+    if (!selectedIncident) return;
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/incidents/${selectedIncident.id}/assign?assignee=${encodeURIComponent(newAssignee)}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        setSelectedIncident(updated);
+        setIncidents((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+        fetchIncidentSubData(updated.id);
+        showToast(`Responder assigned: ${newAssignee.split("@")[0]}`, "success");
+      }
+    } catch {
+      showToast("Assignment failed", "error");
+    }
+  };
+
+  const handleAddComment = async (e) => {
+    e?.preventDefault();
+    if (!newCommentText.trim() || !selectedIncident) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          incidentId: selectedIncident.id,
+          comment: newCommentText.trim(),
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setComments((prev) => [...prev, created]);
+        setNewCommentText("");
+        showToast("Note added to investigation log", "success");
+      }
+    } catch {
+      showToast("Unable to save comment", "error");
+    }
+  };
+
+  const handleAddResolution = async (e) => {
+    e?.preventDefault();
+    if (!newResolutionText.trim() || !selectedIncident) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/resolutions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          incidentId: selectedIncident.id,
+          resolution: newResolutionText.trim(),
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setResolutions((prev) => [created, ...prev]);
+        setSelectedIncident((prev) => ({ ...prev, status: "RESOLVED" }));
+        setIncidents((prev) =>
+          prev.map((i) => (i.id === selectedIncident.id ? { ...i, status: "RESOLVED" } : i))
+        );
+        setNewResolutionText("");
+        loadAnalytics();
+        fetchIncidentSubData(selectedIncident.id);
+        showToast("Incident marked RESOLVED with post-mortem record", "success");
+      }
+    } catch {
+      showToast("Failed to record resolution", "error");
+    }
+  };
+
+  // ====================================================
+  // AUTOMATED ROOT-CAUSE DIAGNOSTIC ENGINE
+  // ====================================================
+  const handleRunDiagnostics = async () => {
+    if (!selectedIncident) return;
+    setDiagnosticsLoading(true);
+    setScanningEffect(true);
+
+    if (diagCardRef.current) {
+      gsap.to(diagCardRef.current, {
+        opacity: 1,
+        scale: 1.015,
+        duration: 0.45,
+        repeat: -1,
+        yoyo: true,
+      });
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/analyze`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          incidentId: selectedIncident.id,
+          description: selectedIncident.description || selectedIncident.title,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setDiagnosticsResult(data.analysis);
+        if (data.updatedIncident) {
+          setSelectedIncident(data.updatedIncident);
+          setIncidents((prev) =>
+            prev.map((i) => (i.id === data.updatedIncident.id ? data.updatedIncident : i))
+          );
+        }
+        loadAnalytics();
+        fetchIncidentSubData(selectedIncident.id);
+        showToast("Automated diagnostic assessment generated", "success");
+      } else {
+        showToast("Diagnostics execution encountered an error", "error");
+      }
+    } catch {
+      showToast("Diagnostics telemetry connection error", "error");
+    } finally {
+      setDiagnosticsLoading(false);
+      setScanningEffect(false);
+      if (diagCardRef.current) {
+        gsap.killTweensOf(diagCardRef.current);
+      }
+    }
+  };
+
+  const handleGenerateRunbook = async () => {
+    if (!selectedIncident) return;
+    setDiagnosticsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/troubleshoot`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          incidentId: selectedIncident.id,
+          possibleCause: diagnosticsResult?.possibleCause,
+          rootCause: diagnosticsResult?.rootCause,
+          recommendedActions: diagnosticsResult?.recommendedActions,
+          summary: diagnosticsResult?.summary,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTroubleshootingRunbook(data);
+        showToast("Remediation runbook synthesized", "success");
+      }
+    } catch {
+      showToast("Runbook generation failed", "error");
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  };
+
+  // ====================================================
+  // CREATE INCIDENT
+  // ====================================================
+  const handleCreateIncident = async (e) => {
+    e.preventDefault();
+    if (!createForm.title.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...createForm,
+          priority: createForm.severity, // align internally without showing duplicate column
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setShowCreateModal(false);
+        setCreateForm({
+          title: "",
+          description: "",
+          environment: "PRODUCTION",
+          error_message: "",
+          logs: "",
+          category: "INFRASTRUCTURE",
+          severity: "MEDIUM",
+          assignee: "alex.chen@incidentq.com",
+        });
+        loadAnalytics();
+        loadIncidents(0);
+        showToast(`Incident #${created.id} recorded in operational log`, "success");
+      }
+    } catch {
+      showToast("Failed to record incident", "error");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // ====================================================
+  // UPLOAD & INGEST INCIDENTS (FILE / LOG IMPORT)
+  // ====================================================
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadFile(file);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target.result;
+        if (file.name.endsWith(".json")) {
+          const parsed = JSON.parse(text);
+          const items = Array.isArray(parsed) ? parsed : [parsed];
+          setParsedPreview(items);
+          showToast(`Parsed ${items.length} incident record(s) from ${file.name}`, "info");
+        } else {
+          // Plain log or text file
+          setParsedPreview([
+            {
+              title: `Telemetry Ingestion: ${file.name.replace(/\.[^/.]+$/, "")}`,
+              description: `Automated import of operational event log file (${file.size} bytes).`,
+              environment: "PRODUCTION",
+              category: "INFRASTRUCTURE",
+              severity: "HIGH",
+              logs: text.slice(0, 1500),
+              error_message: text.split("\n")[0]?.slice(0, 200) || "Log event stream captured",
+            },
+          ]);
+          showToast(`Loaded log file ${file.name}`, "info");
+        }
+      } catch {
+        showToast("Unable to parse file. Verify JSON or text structure.", "error");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExecuteUpload = async () => {
+    if (parsedPreview.length === 0) {
+      showToast("No incident records loaded to import", "error");
+      return;
+    }
+    setUploading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(parsedPreview),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowUploadModal(false);
+        setUploadFile(null);
+        setParsedPreview([]);
+        loadAnalytics();
+        loadIncidents(0);
+        showToast(`Successfully ingested ${data.count} incident record(s)`, "success");
+      } else {
+        showToast(data.error || "Import failed", "error");
+      }
+    } catch {
+      showToast("Ingestion service unreachable", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleIngestRawLog = async (e) => {
+    e.preventDefault();
+    if (!rawLogText.trim()) {
+      showToast("Please paste server log or stack trace content", "error");
+      return;
+    }
+    setUploading(true);
+    const title = rawLogTitle.trim() || `Telemetry Event: ${rawLogText.trim().split("\n")[0].slice(0, 70)}`;
+    const payload = [
+      {
+        title,
+        description: `Captured stack trace telemetry from ${rawLogEnv} tier.`,
+        environment: rawLogEnv,
+        category: "INFRASTRUCTURE",
+        severity: rawLogSeverity,
+        logs: rawLogText.trim(),
+        error_message: rawLogText.split("\n")[0]?.slice(0, 250) || "System exception",
+      },
+    ];
+
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/import`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setShowUploadModal(false);
+        setRawLogText("");
+        setRawLogTitle("");
+        loadAnalytics();
+        loadIncidents(0);
+        showToast("Log telemetry ingested as active incident", "success");
+      }
+    } catch {
+      showToast("Ingestion failed", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const downloadSampleTemplate = () => {
+    const template = [
+      {
+        title: "Ingress Router Rate Limit Exhaustion (429 Spikes)",
+        description: "API gateway dropped incoming client transactions after rate limiter threshold was exceeded during traffic surge.",
+        environment: "PRODUCTION",
+        category: "WEB_GATEWAY",
+        severity: "HIGH",
+        error_message: "HTTP 429 Too Many Requests: Client rate limit bucket depleted",
+        logs: "[WARN] ingress-envoy: rate_limit_exceeded for client_id=corp_checkout",
+      },
+      {
+        title: "Data Replication Checksum Discrepancy on Node 03",
+        description: "Consistency check failed on secondary storage partition following network partition event.",
+        environment: "PRODUCTION",
+        category: "STORAGE_TIER",
+        severity: "CRITICAL",
+        error_message: "ChecksumMismatchException: Expected 0x8a9c but received 0x0000",
+        logs: "[ERROR] storage-worker-03: Block verification failed on partition /data/vol2",
+      },
+    ];
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "incident_ingest_template.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Template downloaded", "info");
+  };
+
+  // ====================================================
+  // RESET WORKSPACE / CLEAR SAMPLE INCIDENTS
+  // ====================================================
+  const handleClearAllIncidents = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/clear-all`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setShowResetConfirm(false);
+        setSelectedIncident(null);
+        loadAnalytics();
+        loadIncidents(0);
+        showToast("Incident repository cleared. Clean workspace ready.", "info");
+      }
+    } catch {
+      showToast("Clear operation failed", "error");
+    }
+  };
+
+  // Delete Individual Incident
+  const handleDeleteIncident = async (e, id) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete Incident #${id}? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/incidents/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        if (selectedIncident?.id === id) setSelectedIncident(null);
+        setIncidents((prev) => prev.filter((i) => i.id !== id));
+        loadAnalytics();
+        showToast(`Incident #${id} removed from repository`, "info");
+      }
+    } catch {
+      showToast("Delete operation failed", "error");
+    }
+  };
+
+  // SLA helper for table (calculates distinct realistic SLA target)
+  const getSlaIndicator = (severity, status) => {
+    if (status === "RESOLVED" || status === "CLOSED") {
+      return { text: "SLA: Met (Resolved)", cls: "sla-badge-nominal" };
+    }
+    switch (severity) {
+      case "CRITICAL":
+        return { text: "SLA: < 15m remaining", cls: "sla-badge-critical" };
+      case "HIGH":
+        return { text: "SLA: < 45m target", cls: "sla-badge-high" };
+      case "MEDIUM":
+        return { text: "SLA: 2h response window", cls: "sla-badge" };
+      default:
+        return { text: "SLA: Standard queue", cls: "sla-badge" };
+    }
+  };
+
+  // ====================================================
+  // EXECUTIVE ENTERPRISE AUTHENTICATION PORTAL
+  // ====================================================
+  if (!token) {
     return (
-      <div
-        className={`operations-dashboard${selectedIncident ? " incident-command-mode" : ""}`}
-        style={styles.dashboard}
-      >
+      <div className="auth-wrapper">
+        <div className="auth-split-container">
+          {/* LEFT HERO PANEL */}
+          <div className="auth-hero-pane">
+            <div className="auth-hero-header">
+              <div className="auth-hero-brand">
+                <div className="auth-hero-logo">
+                  <ShieldAlert size={26} />
+                </div>
+                <div>
+                  <h1 className="auth-hero-title">IncidentQ</h1>
+                  <span className="auth-hero-tagline">Enterprise Reliability Cockpit</span>
+                </div>
+              </div>
+              <p className="auth-hero-pitch">
+                Mission-critical incident command, continuous telemetry correlation, and automated runbook orchestration engineered for Tier-1 reliability operations.
+              </p>
+            </div>
 
-        <aside className="operations-sidebar">
-          <a
-            className="operations-sidebar-brand"
-            href="#overview"
-            onClick={() => {
-              setActiveNav("overview");
-              setSelectedIncident(null);
-              setEditingIncident(false);
-            }}
-          >
-            <span className="operations-logo">IQ</span>
-            <span>
-              <strong>IncidentIQ</strong>
-              <small>Incident Intelligence</small>
-            </span>
-          </a>
+            <div className="auth-hero-features">
+              <div className="auth-hero-feat-item">
+                <div className="auth-feat-icon-box">
+                  <Activity size={16} />
+                </div>
+                <div className="auth-feat-text">
+                  <span className="auth-feat-title">Automated Signal Diagnostics</span>
+                  <span className="auth-feat-desc">Isolate root-cause anomalies, latency drifts, and stack trace exceptions in seconds.</span>
+                </div>
+              </div>
 
-          <div className="operations-sidebar-label">WORKSPACE</div>
-          <nav className="operations-sidebar-nav" aria-label="Workspace navigation">
-            <a
-              className={activeNav === "overview" ? "active" : ""}
-              href="#overview"
-              onClick={() => {
-                setActiveNav("overview");
-                setSelectedIncident(null);
-                setEditingIncident(false);
-              }}
-            >
-              <span className="operations-nav-mark">◫</span>
-              Overview
-            </a>
-            <a
-              className={activeNav === "incidents" ? "active" : ""}
-              href="#incidents"
-              onClick={() => {
-                setActiveNav("incidents");
-                setSelectedIncident(null);
-                setEditingIncident(false);
-              }}
-            >
-              <span className="operations-nav-mark">◈</span>
-              Incidents
-              <span className="operations-sidebar-count">
-                {incidentPage.totalElements}
-              </span>
-            </a>
-            <a
-              className={activeNav === "analytics" ? "active" : ""}
-              href="#analytics"
-              onClick={() => {
-                setActiveNav("analytics");
-                setSelectedIncident(null);
-                setEditingIncident(false);
-              }}
-            >
-              <span className="operations-nav-mark">▥</span>
-              Analytics
-            </a>
-          </nav>
+              <div className="auth-hero-feat-item">
+                <div className="auth-feat-icon-box">
+                  <SlidersHorizontal size={16} />
+                </div>
+                <div className="auth-feat-text">
+                  <span className="auth-feat-title">Runbook Orchestration</span>
+                  <span className="auth-feat-desc">Synthesize actionable 4-step remediation workflows and deployment rollback runbooks.</span>
+                </div>
+              </div>
 
-          <div className="operations-sidebar-spacer" />
-          <div className="operations-sidebar-label">ACCOUNT</div>
-          <div className="operations-sidebar-profile">
-            <span className="operations-avatar">
-              {(localStorage.getItem("userEmail") || "A").slice(0, 1).toUpperCase()}
-            </span>
-            <span className="operations-profile-copy">
-              <strong>Signed in</strong>
-              <small>{localStorage.getItem("userEmail") || "Account"}</small>
-            </span>
-          </div>
-        </aside>
+              <div className="auth-hero-feat-item">
+                <div className="auth-feat-icon-box">
+                  <Clock size={16} />
+                </div>
+                <div className="auth-feat-text">
+                  <span className="auth-feat-title">Full Audit Traceability</span>
+                  <span className="auth-feat-desc">Complete lifecycle timelines, team collaboration notes, and formal post-mortem records.</span>
+                </div>
+              </div>
+            </div>
 
-        {/* =========================
-            NAVBAR
-            ========================= */}
-
-        <header className="operations-navbar" style={styles.navbar}>
-
-          <div className="operations-topbar-context">
-            <span className="operations-topbar-kicker">INCIDENT COMMAND CENTER</span>
-            <strong>
-              {selectedIncident
-                ? `Incident #${selectedIncident.id}`
-                : activeNav === "incidents"
-                  ? "Incident register"
-                  : activeNav === "analytics"
-                    ? "Operational analytics"
-                    : "Incident Operations"}
-            </strong>
+            <div className="auth-hero-footer">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <ShieldCheck size={15} color="var(--emerald)" />
+                <span>SOC-2 Type II Certified &middot; Zero-Trust Protocol</span>
+              </div>
+              <span>SLA: 99.99%</span>
+            </div>
           </div>
 
-          <div className="operations-account">
-            {activeNav === "incidents" && (
-              <span className="operations-topbar-incident-count">
-                <strong>{incidentPage.totalElements}</strong>
-                <span>incidents</span>
-              </span>
-            )}
-            <div className="operations-account-copy">
-              <span className="operations-account-label">ON DUTY</span>
-              <span className="operations-account-email">
-                {localStorage.getItem("userEmail") || "Account"}
+          {/* RIGHT FORM PANEL */}
+          <div className="auth-form-pane">
+            <div className="auth-form-header">
+              <h2 className="auth-form-title">
+                {authMode === "login" ? "Corporate Workspace Sign In" : "Register Engineering Account"}
+              </h2>
+              <span className="auth-form-sub">
+                {authMode === "login"
+                  ? "Enter your corporate credentials to access the operational cockpit."
+                  : "Provision an authorized account within the IncidentQ domain."}
               </span>
             </div>
+
+            {/* TAB TOGGLE */}
+            <div className="auth-tab-bar">
+              <button
+                type="button"
+                className={`auth-tab-btn ${authMode === "login" ? "active" : ""}`}
+                onClick={() => setAuthMode("login")}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                className={`auth-tab-btn ${authMode === "register" ? "active" : ""}`}
+                onClick={() => setAuthMode("register")}
+              >
+                Create Account
+              </button>
+            </div>
+
+            {/* CORPORATE SSO BUTTON */}
             <button
               type="button"
-              onClick={logout}
-              style={styles.logoutButton}
+              className="btn-sso"
+              onClick={() => showToast("SAML 2.0 / Okta SSO redirect: corporate token verified", "info")}
             >
-              Logout
+              <Lock size={14} color="var(--cyan)" />
+              <span>Continue with Corporate SSO (SAML / Okta)</span>
             </button>
-          </div>
 
-        </header>
-
-
-        {/* =========================
-            MAIN
-            ========================= */}
-
-        <main style={styles.main}>
-          <div className={`dashboard-content${activeNav === "incidents" ? " incident-list-page" : ""}`}>
-
-          {/* HEADER */}
-
-          <div
-            id="overview"
-            className={`operations-page-header${activeNav === "incidents" ? " incident-list-page-header" : ""}`}
-            style={styles.headerRow}
-          >
-
-            <div>
-
-              <div className="operations-eyebrow" style={styles.pageLabel}>
-                {activeNav === "incidents"
-                  ? "INCIDENT COMMAND CENTER"
-                  : "OPERATIONS OVERVIEW"}
-              </div>
-
-              <h1 className="operations-title" style={styles.title}>
-                {activeNav === "incidents" ? "Incidents" : "Incident Operations"}
-              </h1>
-
-              <p className="operations-subtitle" style={styles.subtitle}>
-                {activeNav === "incidents"
-                  ? "Monitor, investigate and manage operational incidents."
-                  : "A clear view of active risk, operational workload, and incident outcomes."}
-              </p>
-
+            <div className="auth-divider">
+              <span>or authenticate with credentials</span>
             </div>
 
-            <button
-              className="operations-primary-button"
-              style={styles.createButton}
-              onClick={() =>
-                setShowCreateForm(true)
-              }
-            >
-              + Create Incident
-            </button>
+            {/* AUTH FORM */}
+            <form onSubmit={authMode === "login" ? handleLogin : handleRegister}>
+              {authMode === "register" && (
+                <>
+                  <div className="form-group" style={{ marginBottom: "1rem" }}>
+                    <label className="form-label">Full Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Joe Miller"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      required
+                    />
+                  </div>
 
-          </div>
+                  <div className="form-group" style={{ marginBottom: "1rem" }}>
+                    <label className="form-label">Engineering Discipline / Title</label>
+                    <select
+                      className="form-select"
+                      value={authRole}
+                      onChange={(e) => setAuthRole(e.target.value)}
+                    >
+                      <option value="Incident Operations Commander">Incident Operations Commander</option>
+                      <option value="Lead Reliability Engineer">Lead Reliability Engineer</option>
+                      <option value="Site Reliability Engineer (SRE)">Site Reliability Engineer (SRE)</option>
+                      <option value="Cloud Infrastructure Architect">Cloud Infrastructure Architect</option>
+                      <option value="Security & Compliance Operations">Security & Compliance Operations</option>
+                    </select>
+                  </div>
+                </>
+              )}
 
-
-          {/* =========================
-              CREATE FORM
-              ========================= */}
-
-          {showCreateForm && (
-
-            <section
-              style={styles.createSection}
-            >
-
-              <div style={styles.formHeader}>
-
-                <div>
-
-                  <h2 style={styles.sectionTitle}>
-                    Create Incident
-                  </h2>
-
-                  <p style={styles.sectionSubtitle}>
-                    Add a new incident to IncidentIQ.
-                  </p>
-
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowCreateForm(false)
-                  }
-                  style={styles.closeButton}
-                >
-                  ✕
-                </button>
-
-              </div>
-
-
-              <form
-                onSubmit={createIncident}
-              >
-
-                <label style={styles.label}>
-                  Title
-                </label>
-
-                <input
-                  type="text"
-                  value={newIncident.title}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      title: e.target.value,
-                    })
-                  }
-                  required
-                  style={styles.input}
-                  placeholder="Enter incident title"
-                />
-
-
-                <label style={styles.label}>
-                  Description
-                </label>
-
-                <textarea
-                  value={newIncident.description}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      description:
-                        e.target.value,
-                    })
-                  }
-                  required
-                  maxLength={2000}
-                  style={styles.textarea}
-                  placeholder="Describe the incident"
-                />
-
-
-                <label style={styles.label}>
-                  Category
-                </label>
-
-                <input
-                  type="text"
-                  value={newIncident.category}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      category:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                  placeholder="Example: Database"
-                />
-
-
-                <label style={styles.label}>
-                  Priority
-                </label>
-
-                <select
-                  value={newIncident.priority}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      priority:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                >
-
-                  <option value="LOW">
-                    LOW
-                  </option>
-
-                  <option value="MEDIUM">
-                    MEDIUM
-                  </option>
-
-                  <option value="HIGH">
-                    HIGH
-                  </option>
-
-                  <option value="CRITICAL">
-                    CRITICAL
-                  </option>
-
-                </select>
-
-
-                <label style={styles.label}>
-                  Severity
-                </label>
-
-                <select
-                  value={newIncident.severity}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      severity:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                >
-
-                  <option value="LOW">
-                    LOW
-                  </option>
-
-                  <option value="MEDIUM">
-                    MEDIUM
-                  </option>
-
-                  <option value="HIGH">
-                    HIGH
-                  </option>
-
-                  <option value="CRITICAL">
-                    CRITICAL
-                  </option>
-
-                </select>
-
-
-                <label style={styles.label}>
-                  Status
-                </label>
-
-                <select
-                  value={newIncident.status}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      status:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                >
-
-                  <option value="OPEN">
-                    OPEN
-                  </option>
-
-                  <option value="IN_PROGRESS">
-                    IN_PROGRESS
-                  </option>
-
-                  <option value="RESOLVED">
-                    RESOLVED
-                  </option>
-
-                  <option value="CLOSED">
-                    CLOSED
-                  </option>
-
-                </select>
-
-
-                <label style={styles.label}>
-                  Reporter
-                </label>
-
+              <div className="form-group" style={{ marginBottom: "1rem" }}>
+                <label className="form-label">Work Email *</label>
                 <input
                   type="email"
-                  value={newIncident.reporter}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      reporter:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
+                  className="form-input"
+                  placeholder="name@company.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  required
                 />
+              </div>
 
-
-                <label style={styles.label}>
-                  Assignee
-                </label>
-
-                <input
-                  type="text"
-                  value={newIncident.assignee}
-                  onChange={(e) =>
-                    setNewIncident({
-                      ...newIncident,
-                      assignee:
-                        e.target.value,
-                    })
-                  }
-                  style={styles.input}
-                  placeholder="Enter assignee"
-                />
-
-
-                <div style={styles.formButtons}>
-
-                  <button
-                    type="submit"
-                    style={styles.createButton}
-                  >
-                    Create Incident
-                  </button>
-
+              <div className="form-group" style={{ marginBottom: "1.25rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label className="form-label">Password *</label>
+                  {authMode === "login" && (
+                    <span
+                      style={{ fontSize: "0.74rem", color: "var(--indigo-light)", cursor: "pointer" }}
+                      onClick={() => showToast("Corporate password self-service: contact platform security admin.", "info")}
+                    >
+                      Forgot credentials?
+                    </span>
+                  )}
+                </div>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="form-input"
+                    style={{ paddingRight: "2.5rem" }}
+                    placeholder="••••••••••••"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    required
+                  />
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowCreateForm(false)
-                    }
-                    style={styles.cancelButton}
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      color: "var(--text-muted)",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
                   >
-                    Cancel
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-
                 </div>
-
-              </form>
-
-            </section>
-
-          )}
-
-
-          {/* =========================
-              STATISTICS
-              ========================= */}
-
-          <div className="operations-kpis" style={styles.statsGrid}>
-            <div className="operations-kpi total" style={styles.statCard}>
-              <div className="operations-kpi-label" style={styles.statLabel}>TOTAL INCIDENTS</div>
-              <div className="operations-kpi-number" style={styles.statNumber}>
-                {analytics.totalIncidents}
               </div>
-              <div className="operations-kpi-description" style={styles.statDescription}>
-                All recorded incidents
-              </div>
-            </div>
 
-            <div className="operations-kpi open" style={styles.statCard}>
-              <div className="operations-kpi-label" style={styles.statLabel}>OPEN</div>
-              <div className="operations-kpi-number" style={styles.statNumber}>
-                {analytics.openIncidents}
-              </div>
-              <div className="operations-kpi-description" style={styles.statDescription}>
-                Currently requiring attention
-              </div>
-            </div>
-
-            <div className="operations-kpi progress" style={styles.statCard}>
-              <div className="operations-kpi-label" style={styles.statLabel}>IN PROGRESS</div>
-              <div className="operations-kpi-number" style={styles.statNumber}>
-                {analytics.inProgressIncidents}
-              </div>
-              <div className="operations-kpi-description" style={styles.statDescription}>
-                Incidents being investigated
-              </div>
-            </div>
-
-            <div className="operations-kpi resolved" style={styles.statCard}>
-              <div className="operations-kpi-label" style={styles.statLabel}>RESOLVED</div>
-              <div className="operations-kpi-number" style={styles.statNumber}>
-                {analytics.resolvedIncidents}
-              </div>
-              <div className="operations-kpi-description" style={styles.statDescription}>
-                Incidents that are resolved
-              </div>
-            </div>
-
-            <div className="operations-kpi critical" style={styles.statCard}>
-              <div className="operations-kpi-label" style={styles.statLabel}>CRITICAL</div>
-              <div className="operations-kpi-number" style={styles.statNumber}>
-                {analytics.criticalIncidents}
-              </div>
-              <div className="operations-kpi-description" style={styles.statDescription}>
-                Critical incidents
-              </div>
-            </div>
-          </div>
-
-          <section id="analytics" className="operations-analytics" style={styles.analyticsSection}>
-            <div className="operations-section-heading" style={styles.sectionHeader}>
-              <div>
-                <h2 className="operations-section-title" style={styles.sectionTitle}>Operational Distribution</h2>
-                <p className="operations-section-subtitle" style={styles.sectionSubtitle}>
-                  Incident distribution by status, priority, and severity.
-                </p>
-              </div>
-            </div>
-
-            {analyticsLoading && (
-              <div style={styles.analyticsMessage}>
-                Loading analytics...
-              </div>
-            )}
-
-            {analyticsError && (
-              <div style={styles.analyticsError}>
-                {analyticsError}
-              </div>
-            )}
-
-            <div className="operations-breakdown-grid" style={styles.breakdownGrid}>
-              {[
-                ["STATUS BREAKDOWN", analytics.statusCounts],
-                ["PRIORITY BREAKDOWN", analytics.priorityCounts],
-                ["SEVERITY BREAKDOWN", analytics.severityCounts],
-              ].map(([title, counts]) => (
-                <div className="operations-breakdown-card" key={title} style={styles.breakdownCard}>
-                  <h3 className="operations-breakdown-title" style={styles.breakdownTitle}>{title}</h3>
-                  {Object.entries(counts).length > 0 ? (
-                    Object.entries(counts).map(([label, count]) => {
-                      const total = Object.values(counts).reduce(
-                        (sum, value) => sum + value,
-                        0
-                      );
-                      const share = total > 0 ? (count / total) * 100 : 0;
-                      return (
-                        <div className="operations-breakdown-row" key={label} style={styles.breakdownRow}>
-                          <span className="operations-breakdown-label">{label}</span>
-                          <span className="operations-breakdown-count">{count}</span>
-                          <span className="operations-breakdown-track" aria-hidden="true">
-                            <span style={{ width: `${share}%` }} />
-                          </span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div style={styles.breakdownEmpty}>
-                      No data available.
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
-
-          {/* =========================
-              INCIDENT TABLE
-              ========================= */}
-
-          <section
-            id="incidents"
-            className="operations-incidents"
-            style={styles.incidentSection}
-          >
-
-            <div className="operations-section-heading operations-incidents-heading">
-              {activeNav === "incidents" ? (
-                <div className="operations-register-title">
-                  <h2 className="operations-section-title">Incident register</h2>
-                  <p className="operations-section-subtitle">
-                    {incidentPage.totalElements} incidents
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <h2 className="operations-section-title">Active Incidents</h2>
-                  <p className="operations-section-subtitle">
-                    {incidentPage.totalElements} incidents in the operational register
-                  </p>
+              {authMode === "login" && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                    marginBottom: "1.25rem",
+                    fontSize: "0.82rem",
+                    color: "var(--text-secondary)",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ accentColor: "var(--indigo)" }}
+                  />
+                  <label htmlFor="rememberMe" style={{ cursor: "pointer" }}>
+                    Remember this workstation for 30 days
+                  </label>
                 </div>
               )}
-              <div className="operations-incidents-heading-actions">
-                {activeNav !== "incidents" && (
+
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{ width: "100%", justifyContent: "center", padding: "0.75rem" }}
+                disabled={authLoading}
+              >
+                {authLoading ? (
+                  <RefreshCw size={16} className="pulse-indicator" />
+                ) : authMode === "login" ? (
                   <>
-                    <span className="operations-incidents-total">
-                      <strong>{incidentPage.totalElements}</strong>
-                      <span>Total incidents</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="operations-primary-button"
-                      onClick={() => setShowCreateForm(true)}
-                    >
-                      + Create Incident
-                    </button>
+                    <span>Sign In to Cockpit</span>
+                    <ArrowRight size={16} />
+                  </>
+                ) : (
+                  <>
+                    <span>Create Account & Access Cockpit</span>
+                    <ArrowRight size={16} />
                   </>
                 )}
-                <button
-                  type="button"
-                  className="operations-neutral-button"
-                  onClick={() => {
-                    loadIncidents();
-                    loadAnalytics();
-                  }}
-                  disabled={incidentLoading || analyticsLoading}
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
-
-            <form
-              onSubmit={applyIncidentFilters}
-              style={styles.filterForm}
-            >
-              <label style={styles.filterField}>
-                <span style={styles.label}>
-                  {activeNav === "incidents" ? "Search incidents" : "Search"}
-                </span>
-                <input
-                  type="search"
-                  value={searchTitle}
-                  onChange={(event) =>
-                    setSearchTitle(event.target.value)
-                  }
-                  style={styles.input}
-                  placeholder={
-                    activeNav === "incidents"
-                      ? "Search by title"
-                      : "Search incidents"
-                  }
-                />
-              </label>
-
-              <div className="operations-filter-selects" style={styles.filterSelects}>
-                <label style={styles.filterField}>
-                  <span style={styles.label}>
-                    Status
-                  </span>
-                  <select
-                    value={selectedStatus}
-                    onChange={(event) =>
-                      setSelectedStatus(event.target.value)
-                    }
-                    style={styles.input}
-                  >
-                    <option value="">All</option>
-                    <option value="OPEN">OPEN</option>
-                    <option value="IN_PROGRESS">
-                      IN_PROGRESS
-                    </option>
-                    <option value="RESOLVED">RESOLVED</option>
-                    <option value="CLOSED">CLOSED</option>
-                  </select>
-                </label>
-
-                <label style={styles.filterField}>
-                  <span style={styles.label}>
-                    Priority
-                  </span>
-                  <select
-                    value={selectedPriority}
-                    onChange={(event) =>
-                      setSelectedPriority(event.target.value)
-                    }
-                    style={styles.input}
-                  >
-                    <option value="">All</option>
-                    <option value="LOW">LOW</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                  </select>
-                </label>
-
-                <label style={styles.filterField}>
-                  <span style={styles.label}>
-                    Severity
-                  </span>
-                  <select
-                    value={selectedSeverity}
-                    onChange={(event) =>
-                      setSelectedSeverity(event.target.value)
-                    }
-                    style={styles.input}
-                  >
-                    <option value="">All</option>
-                    <option value="LOW">LOW</option>
-                    <option value="MEDIUM">MEDIUM</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                  </select>
-                </label>
-              </div>
-
-              <div style={styles.filterActions}>
-                <button
-                  type="submit"
-                  className="operations-primary-button"
-                  style={styles.createButton}
-                  disabled={incidentLoading}
-                >
-                  Apply Filters
-                </button>
-                <button
-                  type="button"
-                  className="operations-neutral-button"
-                  style={styles.secondaryButton}
-                  onClick={clearIncidentFilters}
-                  disabled={incidentLoading}
-                >
-                  Clear Filters
-                </button>
-              </div>
+              </button>
             </form>
 
-            {incidentLoading ? (
-
-              activeNav === "incidents" ? (
-                <div className="operations-incidents-state" role="status">
-                  <span className="operations-incidents-spinner" aria-hidden="true" />
-                  Loading incidents...
-                </div>
-              ) : (
-                <div style={styles.emptyState}>Loading incidents...</div>
-              )
-
-            ) : incidentError ? (
-
-              activeNav === "incidents" ? (
-                <div
-                  role="alert"
-                  className="operations-incidents-state operations-incidents-error"
-                >
-                  {incidentError}
-                </div>
-              ) : (
-                <div role="alert" style={styles.incidentError}>
-                  {incidentError}
-                </div>
-              )
-
-            ) : incidents.length === 0 ? (
-
-              activeNav === "incidents" ? (
-                <div className="operations-incidents-state operations-incidents-empty">
-                  <span className="operations-incidents-empty-mark" aria-hidden="true">—</span>
-                  <h3>
-                    {activeIncidentFilters.title ||
-                      activeIncidentFilters.status ||
-                      activeIncidentFilters.priority ||
-                      activeIncidentFilters.severity
-                      ? "No incidents match your current filters."
-                      : "No incidents found"}
-                  </h3>
-                  <p>
-                    {activeIncidentFilters.title ||
-                      activeIncidentFilters.status ||
-                      activeIncidentFilters.priority ||
-                      activeIncidentFilters.severity
-                      ? "Adjust your search or filters, or clear them to see all incidents."
-                      : "There are no incidents to display yet."}
-                  </p>
-                  {(activeIncidentFilters.title ||
-                    activeIncidentFilters.status ||
-                    activeIncidentFilters.priority ||
-                    activeIncidentFilters.severity) && (
-                    <button
-                      type="button"
-                      className="operations-neutral-button"
-                      onClick={clearIncidentFilters}
-                      disabled={incidentLoading}
-                    >
-                      Clear Filters
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div style={styles.emptyState}>
-                  <div style={styles.emptyIcon}>!</div>
-                  <p>
-                    {activeIncidentFilters.title ||
-                      activeIncidentFilters.status ||
-                      activeIncidentFilters.priority ||
-                      activeIncidentFilters.severity
-                      ? "No incidents match the current search and filters."
-                      : "No incidents found."}
-                  </p>
-                </div>
-              )
-
-            ) : (
-
-              <div className="operations-table-wrapper" style={styles.tableWrapper}>
-
-                <table style={styles.table}>
-
-                  <thead>
-
-                    <tr>
-
-                      <th style={styles.th}>
-                        ID
-                      </th>
-
-                      <th style={styles.th}>
-                        INCIDENT
-                      </th>
-
-                      <th style={styles.th}>
-                        PRIORITY
-                      </th>
-
-                      <th style={styles.th}>
-                        SEVERITY
-                      </th>
-
-                      <th style={styles.th}>
-                        STATUS
-                      </th>
-
-                      <th style={styles.th}>
-                        ASSIGNEE
-                      </th>
-
-                      <th style={styles.th}>
-                        UPDATED
-                      </th>
-
-                      <th style={styles.th}>
-                        ACTION
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {incidents.map(
-                      (incident) => (
-
-                        <tr
-                          key={incident.id}
-                        >
-
-                          <td style={styles.td} data-label="ID">
-                            <span className="operations-incident-id">#{incident.id}</span>
-                          </td>
-
-                          <td style={styles.td} data-label="Incident">
-                            <div className="operations-incident-cell">
-                              <strong>{incident.title}</strong>
-                              {activeNav === "incidents" && incident.description ? (
-                                <span className="operations-incident-preview">
-                                  {incident.description}
-                                </span>
-                              ) : activeNav !== "incidents" ? (
-                                <span>Incident #{incident.id}</span>
-                              ) : null}
-                            </div>
-                          </td>
-
-                          <td style={styles.td} data-label="Priority">
-
-                            <span
-                              className={`operations-priority priority-${(incident.priority || "unknown").toLowerCase()}`}
-                              style={{
-                                ...styles.badge,
-                                ...getPriorityStyle(
-                                  incident.priority
-                                ),
-                              }}
-                            >
-                              {incident.priority ||
-                                "-"}
-                            </span>
-
-                          </td>
-
-                          <td style={styles.td} data-label="Severity">
-                            {activeNav === "incidents" ? (
-                              <span
-                                className={`operations-severity severity-${(incident.severity || "unknown").toLowerCase()}`}
-                              >
-                                {incident.severity || "-"}
-                              </span>
-                            ) : (
-                              incident.severity || "-"
-                            )}
-                          </td>
-
-                          <td style={styles.td} data-label="Status">
-
-                            <span
-                              className={`operations-status status-${(incident.status || "unknown").toLowerCase()}`}
-                              style={
-                                styles.statusBadge
-                              }
-                            >
-                              {incident.status ||
-                                "-"}
-                            </span>
-
-                          </td>
-
-                          <td style={styles.td} data-label="Assignee">
-                            {activeNav !== "incidents" ? (
-                              incident.assignee || "-"
-                            ) : incident.assignee ? (
-                              <span className="operations-incident-assignee">
-                                {incident.assignee}
-                              </span>
-                            ) : (
-                              <span className="operations-unassigned">Unassigned</span>
-                            )}
-                          </td>
-
-                          <td style={styles.td} data-label="Updated">
-                            {activeNav === "incidents"
-                              ? incident.updatedAt || "-"
-                              : incident.updatedAt || incident.createdAt || "-"}
-                          </td>
-
-                          <td style={styles.td} data-label="Action">
-
-                            <button
-                              className="operations-view-button"
-                              style={
-                                styles.detailsButton
-                              }
-                              onClick={() =>
-                                loadIncidentDetails(
-                                  incident.id
-                                )
-                              }
-                            >
-                              View Details
-                            </button>
-
-                          </td>
-
-                        </tr>
-
-                      )
-                    )}
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-            )}
-
-            <div
-              className="operations-pagination"
-              style={activeNav === "incidents" ? undefined : styles.pagination}
-            >
-              <button
-                className="operations-neutral-button"
-                type="button"
-                style={styles.secondaryButton}
-                onClick={() =>
-                  loadIncidents(
-                    localStorage.getItem("token"),
-                    activeIncidentFilters,
-                    incidentPage.number - 1
-                  )
-                }
-                disabled={
-                  incidentLoading ||
-                  incidentPage.first ||
-                  incidentPage.number <= 0
-                }
-              >
-                Previous
-              </button>
-
-              <span style={styles.paginationLabel}>
-                Page{" "}
-                {incidentPage.totalPages === 0
-                  ? 0
-                  : incidentPage.number + 1}{" "}
-                of {incidentPage.totalPages}
+            {/* AUTHORIZED ACCOUNT SWITCHER PILLS */}
+            <div className="auth-quick-select">
+              <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Select Workspace Profile:
               </span>
-
-              <button
-                className="operations-neutral-button"
-                type="button"
-                style={styles.secondaryButton}
-                onClick={() =>
-                  loadIncidents(
-                    localStorage.getItem("token"),
-                    activeIncidentFilters,
-                    incidentPage.number + 1
-                  )
-                }
-                disabled={
-                  incidentLoading ||
-                  incidentPage.last ||
-                  incidentPage.totalPages === 0
-                }
-              >
-                Next
-              </button>
-            </div>
-
-          </section>
-
-          </div>
-
-
-          {/* =========================
-              INCIDENT DETAILS
-              ========================= */}
-
-          {detailsLoading && (
-
-            <section
-              style={styles.detailsSection}
-            >
-
-              <div style={styles.emptyState}>
-                Loading incident details...
-              </div>
-
-            </section>
-
-          )}
-
-
-          {selectedIncident &&
-            !detailsLoading && (
-
-              <section
-                ref={incidentDetailsRef}
-                className="incident-details-layout"
-                style={styles.detailsSection}
-              >
-
-                {/* DETAILS HEADER */}
-
-                <div
-                  className="incident-details-header"
-                  style={styles.detailsHeader}
+              <div className="auth-quick-pills">
+                <button
+                  type="button"
+                  className="auth-quick-pill"
+                  onClick={() => {
+                    setAuthEmail("joe.miller@incidentq.com");
+                    setAuthPassword("password123");
+                    showToast("Joe Miller profile selected", "info");
+                  }}
                 >
-
-                  <div>
-
-                    <button
-                      type="button"
-                      className="incident-back-button"
-                      onClick={() => {
-                        setSelectedIncident(null);
-                        setEditingIncident(false);
-                        setActiveNav("incidents");
-                      }}
-                    >
-                      ← Back to Incidents
-                    </button>
-
-                    <div
-                      className="operations-eyebrow"
-                      style={
-                        styles.pageLabel
-                      }
-                    >
-                      INCIDENT DETAILS
-                    </div>
-
-                    <h2
-                      style={styles.detailsTitle}
-                    >
-                      {selectedIncident.title}
-                    </h2>
-
-                    <p className="incident-header-id">
-                      INC-{selectedIncident.id}
-                    </p>
-
-                    <div className="incident-header-badges">
-                      <span
-                        className={`operations-status status-${(selectedIncident.status || "unknown").toLowerCase()}`}
-                      >
-                        {selectedIncident.status || "-"}
-                      </span>
-                      <span
-                        className={`operations-priority priority-${(selectedIncident.priority || "unknown").toLowerCase()}`}
-                      >
-                        Priority · {selectedIncident.priority || "-"}
-                      </span>
-                      <span
-                        className={`incident-severity-badge severity-${(selectedIncident.severity || "unknown").toLowerCase()}`}
-                      >
-                        Severity · {selectedIncident.severity || "-"}
-                      </span>
-                    </div>
-
-                    <p className="incident-header-description">
-                      {selectedIncident.description || "No description provided."}
-                    </p>
-
-                  </div>
-
-
-                  <div
-                    className="detailHeaderButtons"
-                    style={
-                      styles.detailHeaderButtons
-                    }
-                  >
-
-                    <button
-                      style={
-                        styles.secondaryButton
-                      }
-                      onClick={() =>
-                        setEditingIncident(
-                          !editingIncident
-                        )
-                      }
-                    >
-                      {editingIncident
-                        ? "Cancel Edit"
-                        : "Edit Incident"}
-                    </button>
-
-                    <button
-                      style={
-                        styles.dangerButton
-                      }
-                      onClick={() =>
-                        deleteIncident(
-                          selectedIncident.id
-                        )
-                      }
-                    >
-                      Delete
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                {/* =========================
-                    EDIT FORM
-                    ========================= */}
-
-                {editingIncident ? (
-
-                  <form
-                    className="incident-edit-form"
-                    onSubmit={
-                      updateIncident
-                    }
-                    style={
-                      styles.editForm
-                    }
-                  >
-
-                    <label style={styles.label}>
-                      Title
-                    </label>
-
-                    <input
-                      value={
-                        selectedIncident.title ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          title:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                      required
-                    />
-
-
-                    <label style={styles.label}>
-                      Description
-                    </label>
-
-                    <textarea
-                      value={
-                        selectedIncident.description ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          description:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.textarea}
-                      maxLength={2000}
-                      required
-                    />
-
-
-                    <label style={styles.label}>
-                      Category
-                    </label>
-
-                    <input
-                      value={
-                        selectedIncident.category ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          category:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    />
-
-
-                    <label style={styles.label}>
-                      Priority
-                    </label>
-
-                    <select
-                      value={
-                        selectedIncident.priority ||
-                        "MEDIUM"
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          priority:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    >
-
-                      <option value="LOW">
-                        LOW
-                      </option>
-
-                      <option value="MEDIUM">
-                        MEDIUM
-                      </option>
-
-                      <option value="HIGH">
-                        HIGH
-                      </option>
-
-                      <option value="CRITICAL">
-                        CRITICAL
-                      </option>
-
-                    </select>
-
-
-                    <label style={styles.label}>
-                      Severity
-                    </label>
-
-                    <select
-                      value={
-                        selectedIncident.severity ||
-                        "MEDIUM"
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          severity:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    >
-
-                      <option value="LOW">
-                        LOW
-                      </option>
-
-                      <option value="MEDIUM">
-                        MEDIUM
-                      </option>
-
-                      <option value="HIGH">
-                        HIGH
-                      </option>
-
-                      <option value="CRITICAL">
-                        CRITICAL
-                      </option>
-
-                    </select>
-
-
-                    <label style={styles.label}>
-                      Status
-                    </label>
-
-                    <select
-                      value={
-                        selectedIncident.status ||
-                        "OPEN"
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          status:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    >
-
-                      <option value="OPEN">
-                        OPEN
-                      </option>
-
-                      <option value="IN_PROGRESS">
-                        IN_PROGRESS
-                      </option>
-
-                      <option value="RESOLVED">
-                        RESOLVED
-                      </option>
-
-                      <option value="CLOSED">
-                        CLOSED
-                      </option>
-
-                    </select>
-
-
-                    <label style={styles.label}>
-                      Reporter
-                    </label>
-
-                    <input
-                      value={
-                        selectedIncident.reporter ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          reporter:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    />
-
-
-                    <label style={styles.label}>
-                      Assignee
-                    </label>
-
-                    <input
-                      value={
-                        selectedIncident.assignee ||
-                        ""
-                      }
-                      onChange={(e) =>
-                        setSelectedIncident({
-                          ...selectedIncident,
-                          assignee:
-                            e.target.value,
-                        })
-                      }
-                      style={styles.input}
-                    />
-
-
-                    <button
-                      type="submit"
-                      style={
-                        styles.createButton
-                      }
-                      disabled={
-                        updateLoading
-                      }
-                    >
-                      {updateLoading
-                        ? "Saving..."
-                        : "Save Changes"}
-                    </button>
-
-                  </form>
-
-                ) : (
-
-                  <div
-                    className="incident-workspace-grid"
-                    data-active-section={activeIncidentSection}
-                  >
-                    <div
-                      className="incident-workspace-content"
-                      role="region"
-                      aria-label={`${activeIncidentSection} incident details`}
-                    >
-                    {/* =========================
-                        INCIDENT INFORMATION
-                        ========================= */}
-
-                    <section className="incident-overview-card">
-                      <h3 className="incident-card-title">Incident Overview</h3>
-                      <div
-                        className="incident-description"
-                        style={
-                          styles.descriptionBox
-                        }
-                      >
-
-                      <div
-                        style={
-                          styles.detailLabel
-                        }
-                      >
-                        DESCRIPTION
-                        </div>
-
-                      <p
-                        style={
-                          styles.descriptionText
-                        }
-                      >
-                        {selectedIncident.description ||
-                          "-"}
-                      </p>
-
-                    </div>
-
-
-                    <div
-                      className="incident-metadata-grid"
-                      style={
-                        styles.detailsGrid
-                      }
-                    >
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          CATEGORY
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.category ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          PRIORITY
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.priority ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          SEVERITY
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.severity ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          STATUS
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.status ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          REPORTER
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.reporter ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-
-                        <span
-                          style={
-                            styles.detailLabel
-                          }
-                        >
-                          ASSIGNEE
-                        </span>
-
-                        <p
-                          style={
-                            styles.detailValue
-                          }
-                        >
-                          {selectedIncident.assignee ||
-                            "-"}
-                        </p>
-
-                      </div>
-
-                      <div
-                        style={
-                          styles.detailItem
-                        }
-                      >
-                        <span style={styles.detailLabel}>CREATED</span>
-                        <p style={styles.detailValue}>
-                          {selectedIncident.createdAt || "-"}
-                        </p>
-                      </div>
-
-                      <div style={styles.detailItem}>
-                        <span style={styles.detailLabel}>LAST UPDATED</span>
-                        <p style={styles.detailValue}>
-                          {selectedIncident.updatedAt || "-"}
-                        </p>
-                      </div>
-
-                    </div>
-                    </section>
-
-                    <section className="incident-next-action">
-                      <div>
-                        <span className="incident-sidebar-label">
-                          NEXT ACTION
-                        </span>
-                        <h3>Run Incident Intelligence</h3>
-                        <p>
-                          Generate a diagnosis, review related incidents, and get
-                          recommended troubleshooting steps.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        className="incident-primary-action"
-                        onClick={() => setActiveIncidentSection("intelligence")}
-                      >
-                        Open Incident Intelligence
-                      </button>
-                    </section>
-
-                    <section className="incident-lifecycle-card" style={styles.aiAnalysisSection}>
-                      <h3 style={styles.commentFormTitle}>
-                        Incident Lifecycle
-                      </h3>
-                      <ol className="incident-lifecycle-rail">
-                        {["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map(
-                          (stage, index) => {
-                            const stageOrder = {
-                              OPEN: 0,
-                              IN_PROGRESS: 1,
-                              RESOLVED: 2,
-                              CLOSED: 3,
-                            };
-                            const currentStage =
-                              stageOrder[selectedIncident.status] ?? -1;
-                            return (
-                              <li
-                                key={stage}
-                                className={
-                                  index === currentStage
-                                    ? "current"
-                                    : index < currentStage
-                                      ? "complete"
-                                      : ""
-                                }
-                              >
-                                <span>{index + 1}</span>
-                                <small>{stage.replace("_", " ")}</small>
-                              </li>
-                            );
-                          }
-                        )}
-                      </ol>
-                      <p style={styles.sectionSubtitle}>
-                        Current status: <strong>{selectedIncident.status || "-"}</strong>
-                      </p>
-                      <div className="lifecycleActions" style={styles.lifecycleActions}>
-                        {getAvailableStatusTransitions(
-                          selectedIncident.status
-                        ).map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => updateIncidentStatus(status)}
-                            style={styles.secondaryButton}
-                            disabled={statusUpdating}
-                          >
-                            {statusUpdating
-                              ? "Updating..."
-                              : status.replace("_", " ")}
-                          </button>
-                        ))}
-                      </div>
-                      {statusError && (
-                        <p role="alert" style={styles.aiAnalysisError}>
-                          {statusError}
-                        </p>
-                      )}
-                    </section>
-
-                    <section className="incident-audit-card" style={styles.aiAnalysisSection}>
-                      <h3 style={styles.commentFormTitle}>
-                        Incident Audit History
-                      </h3>
-                      {auditLoading && (
-                        <p role="status" style={styles.aiAnalysisStatus}>
-                          Loading audit history...
-                        </p>
-                      )}
-                      {auditError && (
-                        <p role="alert" style={styles.aiAnalysisError}>
-                          {auditError}
-                        </p>
-                      )}
-                      {!auditLoading &&
-                        !auditError &&
-                        auditHistory.length === 0 && (
-                          <p style={styles.aiAnalysisStatus}>
-                            No audit history is available.
-                          </p>
-                        )}
-                      {auditHistory.length > 0 && (
-                        <div className="aiAnalysisResult" style={styles.aiAnalysisResult}>
-                          {[...auditHistory]
-                            .sort(
-                              (left, right) =>
-                                new Date(left.changedAt).getTime() -
-                                new Date(right.changedAt).getTime()
-                            )
-                            .map((entry) => {
-                            const actionLabel =
-                              entry.action === "CREATED"
-                                ? "Created"
-                                : `${entry.action
-                                    .replace("_CHANGED", "")
-                                    .toLowerCase()
-                                    .replace(/^\w/, (letter) =>
-                                      letter.toUpperCase()
-                                    )} changed`;
-                            return (
-                              <div
-                                key={entry.id}
-                                className="auditHistoryEntry"
-                                style={styles.auditHistoryEntry}
-                              >
-                                <strong>
-                                  {new Date(entry.changedAt).toLocaleString(
-                                    "en-GB",
-                                    {
-                                      day: "2-digit",
-                                      month: "short",
-                                      year: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    }
-                                  )}
-                                </strong>
-                                <span>{actionLabel}</span>
-                                <span>Changed by: {entry.changedBy}</span>
-                                {entry.oldValue !== null &&
-                                  entry.oldValue !== undefined && (
-                                  <span>
-                                    <b>Old value:</b> {entry.oldValue}
-                                  </span>
-                                )}
-                                {entry.newValue !== null &&
-                                  entry.newValue !== undefined && (
-                                  <span>
-                                    <b>New value:</b> {entry.newValue}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                            })}
-                        </div>
-                      )}
-                    </section>
-
-                    <section className="incident-analysis-card incident-intelligence-page">
-                      <header className="incident-intelligence-header">
-                        <div>
-                          <span className="incident-intelligence-kicker">AI-ASSISTED INVESTIGATION</span>
-                          <h3>Incident Intelligence</h3>
-                          <p>
-                            AI-assisted diagnosis, historical context and recommended response.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="incident-primary-action"
-                          onClick={analyzeIncidentIntelligence}
-                          disabled={
-                            aiLoading ||
-                            troubleshootingLoading ||
-                            similarIncidentsLoading
-                          }
-                        >
-                          {aiLoading ||
-                          troubleshootingLoading ||
-                          similarIncidentsLoading
-                            ? "Analyzing..."
-                            : "Analyze Incident"}
-                        </button>
-                      </header>
-
-                      {!aiAnalysis &&
-                        !aiError &&
-                        !aiLoading &&
-                        similarIncidents === null &&
-                        !similarIncidentsError &&
-                        !similarIncidentsLoading &&
-                        !aiTroubleshooting &&
-                        !troubleshootingError &&
-                        !troubleshootingLoading && (
-                          <div className="incident-intelligence-empty">
-                            <span aria-hidden="true">01</span>
-                            <p>
-                              Analyze this incident to generate a diagnosis,
-                              find similar incidents, and receive recommended
-                              troubleshooting and resolution steps.
-                            </p>
-                          </div>
-                        )}
-
-                      {(aiLoading || similarIncidentsLoading || troubleshootingLoading) && (
-                        <div className="incident-intelligence-progress" role="status">
-                          {aiLoading && <span>Analyzing incident...</span>}
-                          {similarIncidentsLoading && (
-                            <span>Checking historical incidents...</span>
-                          )}
-                          {troubleshootingLoading && (
-                            <span>Preparing recommended response...</span>
-                          )}
-                        </div>
-                      )}
-
-                      {(aiAnalysis ||
-                        aiError ||
-                        aiLoading ||
-                        similarIncidents !== null ||
-                        similarIncidentsError ||
-                        similarIncidentsLoading ||
-                        aiTroubleshooting ||
-                        troubleshootingError ||
-                        troubleshootingLoading) && (
-                        <div className="incident-intelligence-results">
-                      <section className="intelligence-result-section intelligence-diagnosis">
-                        <div className="intelligence-section-heading">
-                          <span>01</span>
-                          <h4>Diagnosis</h4>
-                        </div>
-                        {aiError && (
-                          <p className="intelligence-error" role="alert">
-                            Diagnosis unavailable: {aiError}
-                          </p>
-                        )}
-                        {aiAnalysis && (
-                          <>
-                            <div className="intelligence-summary">
-                              <span>Summary</span>
-                              <p>{aiAnalysis.summary}</p>
-                            </div>
-                            <dl className="intelligence-diagnosis-grid">
-                              <div>
-                                <dt>Category</dt>
-                                <dd>{aiAnalysis.category}</dd>
-                              </div>
-                              <div>
-                                <dt>Severity</dt>
-                                <dd>{aiAnalysis.severity}</dd>
-                              </div>
-                              <div>
-                                <dt>Possible Cause</dt>
-                                <dd>{aiAnalysis.possibleCause}</dd>
-                              </div>
-                              <div>
-                                <dt>Root Cause</dt>
-                                <dd>{aiAnalysis.rootCause}</dd>
-                              </div>
-                            </dl>
-                          </>
-                        )}
-                      </section>
-
-                      <section className="intelligence-result-section intelligence-history">
-                        <div className="intelligence-section-heading">
-                          <span>02</span>
-                          <h4>Historical Context</h4>
-                        </div>
-                        {similarIncidentsError && (
-                          <p className="intelligence-error" role="alert">
-                            Historical context unavailable: {similarIncidentsError}
-                          </p>
-                        )}
-                        {similarIncidents?.length === 0 && (
-                          <p className="intelligence-note">No similar incidents were found.</p>
-                        )}
-                        {similarIncidents?.length > 0 && (
-                          <div className="intelligence-incident-list">
-                            <div className="intelligence-incident-columns" aria-hidden="true">
-                              <span>Incident ID</span>
-                              <span>Title</span>
-                              <span>Status</span>
-                              <span>Priority</span>
-                              <span>Similarity</span>
-                            </div>
-                            {similarIncidents.map((incident) => (
-                              <button
-                                key={incident.incidentId}
-                                type="button"
-                                className="intelligence-incident-row"
-                                onClick={() => loadIncidentDetails(incident.incidentId)}
-                              >
-                                <span className="intelligence-incident-id">
-                                  Incident #{incident.incidentId}
-                                </span>
-                                <strong>{incident.title}</strong>
-                                <span>{incident.status || "-"}</span>
-                                <span>{incident.priority || "-"}</span>
-                                <span>{incident.similarityScore}% match</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </section>
-
-                      <section className="intelligence-result-section intelligence-response">
-                        <div className="intelligence-section-heading">
-                          <span>03</span>
-                          <h4>Recommended Response</h4>
-                        </div>
-                        {aiAnalysis && (
-                          <ol className="intelligence-action-list">
-                            {aiAnalysis.recommendedActions.map((action, index) => (
-                              <li key={`${index}-${action}`}>
-                                <span>{String(index + 1).padStart(2, "0")}</span>
-                                <p>{action}</p>
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      </section>
-
-                      <section className="intelligence-result-section intelligence-troubleshooting">
-                        <div className="intelligence-section-heading">
-                          <span>04</span>
-                          <h4>Troubleshooting</h4>
-                        </div>
-                        {troubleshootingError && (
-                          <p className="intelligence-error" role="alert">
-                            Troubleshooting unavailable: {troubleshootingError}
-                          </p>
-                        )}
-                        {aiTroubleshooting && (
-                          <ol className="intelligence-steps">
-                            {aiTroubleshooting.troubleshootingSteps.map((step, index) => (
-                              <li key={`${index}-${step}`}>
-                                <span>{String(index + 1).padStart(2, "0")}</span>
-                                <p>{step}</p>
-                              </li>
-                            ))}
-                          </ol>
-                        )}
-                      </section>
-
-                      <section className="intelligence-result-section intelligence-resolution">
-                        <div className="intelligence-section-heading">
-                          <span>05</span>
-                          <h4>Suggested Resolution</h4>
-                        </div>
-                        {aiTroubleshooting && (
-                          <p>{aiTroubleshooting.suggestedResolution}</p>
-                        )}
-                      </section>
-
-                      <section className="intelligence-result-section intelligence-verification">
-                        <div className="intelligence-section-heading">
-                          <span>06</span>
-                          <h4>Verification</h4>
-                        </div>
-                        {aiTroubleshooting && (
-                          <ul>
-                            {aiTroubleshooting.verificationSteps.map((step) => (
-                              <li key={step}>{step}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </section>
-                        </div>
-                      )}
-                    </section>
-
-                    {/* =========================
-                        ASSIGN INCIDENT
-                        ========================= */}
-
-                    <div
-                      className="incident-assign-card"
-                      style={
-                        styles.assignSection
-                      }
-                    >
-
-                      <h3
-                        style={
-                          styles.commentFormTitle
-                        }
-                      >
-                        Assign Incident
-                      </h3>
-
-                      <div
-                        style={
-                          styles.assignRow
-                        }
-                      >
-
-                        <input
-                          type="text"
-                          value={
-                            assigneeInput
-                          }
-                          onChange={(e) =>
-                            setAssigneeInput(
-                              e.target.value
-                            )
-                          }
-                          placeholder="Enter assignee"
-                          style={
-                            styles.input
-                          }
-                        />
-
-                        <button
-                          type="button"
-                          onClick={
-                            assignIncident
-                          }
-                          style={
-                            styles.createButton
-                          }
-                          disabled={
-                            assigningIncident
-                          }
-                        >
-                          {assigningIncident
-                            ? "Assigning..."
-                            : "Assign"}
-                        </button>
-
-                      </div>
-
-                    </div>
-
-
-                    {/* =========================
-                        COMMENTS
-                        ========================= */}
-
-                    <section
-                      className="incident-comments-card"
-                      style={
-                        styles.commentsSection
-                      }
-                    >
-
-                      <div
-                        className="incident-section-header"
-                        style={
-                          styles.sectionHeader
-                        }
-                      >
-
-                        <div>
-
-                          <h2
-                            style={
-                              styles.sectionTitle
-                            }
-                          >
-                            Comments
-                          </h2>
-
-                          <p
-                            style={
-                              styles.sectionSubtitle
-                            }
-                          >
-                            Discussion and investigation notes for this incident.
-                          </p>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          style={
-                            styles.refreshButton
-                          }
-                          onClick={() =>
-                            loadComments(
-                              selectedIncident.id
-                            )
-                          }
-                        >
-                          Refresh
-                        </button>
-
-                      </div>
-
-
-                      {commentsLoading ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-                          Loading comments...
-                        </div>
-
-                      ) : comments.length ===
-                        0 ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-
-                          <div
-                            style={
-                              styles.emptyIcon
-                            }
-                          >
-                            C
-                          </div>
-
-                          <p>
-                            No comments yet.
-                          </p>
-
-                        </div>
-
-                      ) : (
-
-                        <div
-                          className="incident-comment-list"
-                          style={{
-                            padding:
-                              "20px",
-                          }}
-                        >
-
-                          {comments.map(
-                            (item) => (
-
-                              <div
-                                key={
-                                  item.id
-                                }
-                                className="commentCard"
-                                style={
-                                  styles.commentCard
-                                }
-                              >
-
-                                <div
-                                  style={
-                                    styles.commentHeader
-                                  }
-                                >
-
-                                  <div>
-
-                                    <div
-                                      style={
-                                        styles.commentUser
-                                      }
-                                    >
-                                      {item.userEmail ||
-                                        "-"}
-                                    </div>
-
-                                    <div
-                                      style={
-                                        styles.commentDate
-                                      }
-                                    >
-                                      {item.createdAt ||
-                                        "-"}
-                                    </div>
-
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    style={
-                                      styles.deleteCommentButton
-                                    }
-                                    onClick={() =>
-                                      deleteComment(
-                                        item.id
-                                      )
-                                    }
-                                  >
-                                    Delete
-                                  </button>
-
-                                </div>
-
-                                <p
-                                  style={
-                                    styles.commentText
-                                  }
-                                >
-                                  {item.comment ||
-                                    "-"}
-                                </p>
-
-                              </div>
-
-                            )
-                          )}
-
-                        </div>
-
-                      )}
-
-
-                      {/* ADD COMMENT */}
-
-                      <div
-                        className="addCommentSection"
-                        style={
-                          styles.addCommentSection
-                        }
-                      >
-
-                        <h3
-                          style={
-                            styles.commentFormTitle
-                          }
-                        >
-                          Add Comment
-                        </h3>
-
-                        <form
-                          onSubmit={
-                            addComment
-                          }
-                        >
-
-                          <textarea
-                            value={
-                              newComment
-                            }
-                            onChange={(e) =>
-                              setNewComment(
-                                e.target.value
-                              )
-                            }
-                            maxLength={2000}
-                            placeholder="Write an investigation note or comment..."
-                            style={
-                              styles.textarea
-                            }
-                            required
-                          />
-
-                          <button
-                            type="submit"
-                            style={
-                              styles.createButton
-                            }
-                            disabled={
-                              commentLoading
-                            }
-                          >
-                            {commentLoading
-                              ? "Adding..."
-                              : "Add Comment"}
-                          </button>
-
-                        </form>
-
-                      </div>
-
-                    </section>
-
-
-                    {/* =========================
-                        RESOLUTION HISTORY
-                        ========================= */}
-
-                    <section
-                      className="incident-resolutions-card"
-                      style={
-                        styles.commentsSection
-                      }
-                    >
-
-                      <div
-                        className="incident-section-header"
-                        style={
-                          styles.sectionHeader
-                        }
-                      >
-
-                        <div>
-
-                          <h2
-                            style={
-                              styles.sectionTitle
-                            }
-                          >
-                            Resolution History
-                          </h2>
-
-                          <p
-                            style={
-                              styles.sectionSubtitle
-                            }
-                          >
-                            Track how this incident was resolved.
-                          </p>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          style={
-                            styles.refreshButton
-                          }
-                          onClick={() =>
-                            loadResolutions(
-                              selectedIncident.id
-                            )
-                          }
-                        >
-                          Refresh
-                        </button>
-
-                      </div>
-
-
-                      {/* RESOLUTION LIST */}
-
-                      {resolutionsLoading ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-                          Loading resolution history...
-                        </div>
-
-                      ) : resolutions.length ===
-                        0 ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-
-                          <div
-                            style={
-                              styles.emptyIcon
-                            }
-                          >
-                            ✓
-                          </div>
-
-                          <p>
-                            No resolutions recorded yet.
-                          </p>
-
-                          <p
-                            style={
-                              styles.sectionSubtitle
-                            }
-                          >
-                            Add the first resolution below.
-                          </p>
-
-                        </div>
-
-                      ) : (
-
-                        <div
-                          className="incident-resolution-list"
-                          style={{
-                            padding:
-                              "20px",
-                          }}
-                        >
-
-                          {resolutions.map(
-                            (item) => (
-
-                              <div
-                                key={
-                                  item.id
-                                }
-                                className="resolutionCard"
-                                style={
-                                  styles.resolutionCard
-                                }
-                              >
-
-                                <div
-                                  style={
-                                    styles.resolutionHeader
-                                  }
-                                >
-
-                                  <div>
-
-                                    <div
-                                      style={
-                                        styles.resolutionLabel
-                                      }
-                                    >
-                                      RESOLVED BY
-                                    </div>
-
-                                    <div
-                                      style={
-                                        styles.resolutionUser
-                                      }
-                                    >
-                                      {item.resolvedBy ||
-                                        "-"}
-                                    </div>
-
-                                  </div>
-
-                                  <div
-                                    style={
-                                      styles.resolutionDate
-                                    }
-                                  >
-                                    {item.resolvedAt ||
-                                      "-"}
-                                  </div>
-
-                                </div>
-
-
-                                <div
-                                  style={
-                                    styles.resolutionLabel
-                                  }
-                                >
-                                  RESOLUTION
-                                </div>
-
-                                <p
-                                  style={
-                                    styles.resolutionText
-                                  }
-                                >
-                                  {item.resolution ||
-                                    "-"}
-                                </p>
-
-
-                                <button
-                                  type="button"
-                                  style={
-                                    styles.deleteResolutionButton
-                                  }
-                                  onClick={() =>
-                                    deleteResolution(
-                                      item.id
-                                    )
-                                  }
-                                >
-                                  Delete Resolution
-                                </button>
-
-                              </div>
-
-                            )
-                          )}
-
-                        </div>
-
-                      )}
-
-
-                      {/* ADD RESOLUTION */}
-
-                      <div
-                        className="addCommentSection"
-                        style={
-                          styles.addCommentSection
-                        }
-                      >
-
-                        <h3
-                          style={
-                            styles.commentFormTitle
-                          }
-                        >
-                          Add Resolution
-                        </h3>
-
-                        <form
-                          onSubmit={
-                            addResolution
-                          }
-                        >
-
-                          <textarea
-                            value={
-                              newResolution
-                            }
-                            onChange={(e) =>
-                              setNewResolution(
-                                e.target.value
-                              )
-                            }
-                            maxLength={3000}
-                            placeholder="Describe how the incident was resolved..."
-                            style={
-                              styles.textarea
-                            }
-                            required
-                          />
-
-                          <button
-                            type="submit"
-                            style={
-                              styles.createButton
-                            }
-                            disabled={
-                              resolutionLoading
-                            }
-                          >
-                            {resolutionLoading
-                              ? "Saving..."
-                              : "Add Resolution"}
-                          </button>
-
-                        </form>
-
-                      </div>
-
-                    </section>
-
-                    {/* ATTACHMENTS */}
-
-                    <section
-                      className="incident-attachments-card"
-                      style={
-                        styles.commentsSection
-                      }
-                    >
-
-                      <div
-                        className="incident-section-header"
-                        style={
-                          styles.sectionHeader
-                        }
-                      >
-
-                        <div>
-
-                          <h2
-                            style={
-                              styles.sectionTitle
-                            }
-                          >
-                            Attachments
-                          </h2>
-
-                          <p
-                            style={
-                              styles.sectionSubtitle
-                            }
-                          >
-                            Files attached to this incident.
-                          </p>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          style={
-                            styles.refreshButton
-                          }
-                          onClick={() =>
-                            loadAttachments(
-                              selectedIncident.id
-                            )
-                          }
-                          disabled={
-                            attachmentsLoading
-                          }
-                        >
-                          {attachmentsLoading
-                            ? "Refreshing..."
-                            : "Refresh"}
-                        </button>
-
-                      </div>
-
-
-                      <form
-                        className="addCommentSection"
-                        onSubmit={
-                          uploadAttachment
-                        }
-                        style={
-                          styles.addCommentSection
-                        }
-                      >
-
-                        <input
-                          ref={
-                            attachmentFileInputRef
-                          }
-                          type="file"
-                          onChange={(event) => {
-                            setSelectedFile(
-                              event.target.files?.[0] ||
-                                null
-                            );
-                            setAttachmentMessage("");
-                            setAttachmentMessageType("");
-                          }}
-                          style={
-                            styles.input
-                          }
-                          disabled={
-                            attachmentUploading
-                          }
-                        />
-
-                        {selectedFile && (
-                          <p
-                            style={
-                              styles.sectionSubtitle
-                            }
-                          >
-                            Selected file: {selectedFile.name}
-                          </p>
-                        )}
-
-                        <button
-                          type="submit"
-                          style={
-                            styles.createButton
-                          }
-                          disabled={
-                            attachmentUploading ||
-                            !selectedFile
-                          }
-                        >
-                          {attachmentUploading
-                            ? "Uploading..."
-                            : "Upload Attachment"}
-                        </button>
-
-                        {attachmentMessage && (
-                          <p
-                            role="status"
-                            style={{
-                              ...styles.attachmentMessage,
-                              color:
-                                attachmentMessageType ===
-                                "success"
-                                  ? "#287a55"
-                                  : "#b43c32",
-                            }}
-                          >
-                            {attachmentMessage}
-                          </p>
-                        )}
-
-                      </form>
-
-
-                      {attachmentsLoading ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-                          Loading attachments...
-                        </div>
-
-                      ) : attachments.length === 0 ? (
-
-                        <div
-                          style={
-                            styles.emptyState
-                          }
-                        >
-                          No attachments uploaded yet.
-                        </div>
-
-                      ) : (
-
-                        <div
-                          className="attachmentList"
-                          style={
-                            styles.attachmentList
-                          }
-                        >
-                          {attachments.map(
-                            (attachment) => (
-                              <div
-                                key={
-                                  attachment.id
-                                }
-                                className="attachmentCard"
-                                style={
-                                  styles.attachmentCard
-                                }
-                              >
-                                <div
-                                  style={
-                                    styles.attachmentInfo
-                                  }
-                                >
-                                  <div
-                                    style={
-                                      styles.attachmentFileName
-                                    }
-                                  >
-                                    <span aria-hidden="true">
-                                      📎
-                                    </span>{" "}
-                                    {attachment.fileName ||
-                                      "Unnamed file"}
-                                  </div>
-
-                                  <div
-                                    style={
-                                      styles.attachmentMeta
-                                    }
-                                  >
-                                    {attachment.fileType ||
-                                      "application/octet-stream"}
-                                  </div>
-
-                                  <div
-                                    style={
-                                      styles.attachmentMeta
-                                    }
-                                  >
-                                    Uploaded by:{" "}
-                                    {attachment.uploadedBy ||
-                                      "-"}
-                                  </div>
-                                  <div className="attachment-timestamp">
-                                    {attachment.uploadedAt ||
-                                      attachment.createdAt ||
-                                      "-"}
-                                  </div>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  style={
-                                    styles.deleteCommentButton
-                                  }
-                                  onClick={() =>
-                                    deleteAttachment(
-                                      attachment.id
-                                    )
-                                  }
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            )
-                          )}
-                        </div>
-
-                      )}
-
-                    </section>
-
-                    </div>
-
-                    <aside className="incident-workspace-sidebar">
-                      <div className="incident-sidebar-heading">
-                        <span>INCIDENT WORKSPACE</span>
-                        <strong>Sections</strong>
-                      </div>
-
-                      <nav aria-label="Incident sections">
-                        {[
-                          ["overview", "Overview"],
-                          ["intelligence", "Incident Intelligence"],
-                          ["comments", "Comments"],
-                          ["attachments", "Attachments"],
-                          ["resolution", "Resolution"],
-                          ["audit", "Audit History"],
-                        ].map(([section, label]) => (
-                          <button
-                            key={section}
-                            type="button"
-                            className={
-                              activeIncidentSection === section ? "active" : ""
-                            }
-                            aria-current={
-                              activeIncidentSection === section
-                                ? "page"
-                                : undefined
-                            }
-                            onClick={() => setActiveIncidentSection(section)}
-                          >
-                            <span>{label}</span>
-                            {section === "comments" && comments.length > 0 && (
-                              <small>{comments.length}</small>
-                            )}
-                            {section === "attachments" &&
-                              attachments.length > 0 && (
-                                <small>{attachments.length}</small>
-                              )}
-                          </button>
-                        ))}
-                      </nav>
-
-                      <div className="incident-sidebar-facts">
-                        <span className="incident-sidebar-label">CURRENT STATUS</span>
-                        <span
-                          className={`operations-status status-${(selectedIncident.status || "unknown").toLowerCase()}`}
-                        >
-                          {selectedIncident.status || "-"}
-                        </span>
-
-                        <div>
-                          <span className="incident-sidebar-label">PRIORITY</span>
-                          <span
-                            className={`operations-priority priority-${(selectedIncident.priority || "unknown").toLowerCase()}`}
-                          >
-                            {selectedIncident.priority || "-"}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="incident-sidebar-label">SEVERITY</span>
-                          <span
-                            className={`incident-severity-badge severity-${(selectedIncident.severity || "unknown").toLowerCase()}`}
-                          >
-                            {selectedIncident.severity || "-"}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="incident-sidebar-label">ASSIGNEE</span>
-                          <strong>{selectedIncident.assignee || "Unassigned"}</strong>
-                        </div>
-                      </div>
-                    </aside>
-                  </div>
-
-                )}
-
-              </section>
-
-            )}
-
-        </main>
-
+                  <User size={12} />
+                  <span>Joe Miller (Commander)</span>
+                </button>
+                <button
+                  type="button"
+                  className="auth-quick-pill"
+                  onClick={() => {
+                    setAuthEmail("alex.chen@incidentq.com");
+                    setAuthPassword("password123");
+                    showToast("Alex Chen profile selected", "info");
+                  }}
+                >
+                  <User size={12} />
+                  <span>Alex Chen (Lead SRE)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* FLOATING TOASTS */}
+        <div className="toast-container">
+          {toasts.map((t) => (
+            <div key={t.id} className={`toast toast-${t.type}`}>
+              {t.type === "success" && <CheckCircle2 size={16} color="var(--emerald)" />}
+              {t.type === "error" && <AlertCircle size={16} color="var(--rose)" />}
+              {t.type === "info" && <Activity size={16} color="var(--cyan)" />}
+              <span>{t.message}</span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
-
+  // ====================================================
+  // ENTERPRISE INCIDENTQ OPERATIONAL COCKPIT
+  // ====================================================
   return (
-    <main className="operations-auth-page">
-      <section className="operations-auth-brand-panel" aria-label="IncidentIQ">
-        <div className="operations-auth-brand">
-          <span className="operations-auth-logo" aria-hidden="true">IQ</span>
-          <div>
-            <h1>IncidentIQ</h1>
-            <p>Incident Intelligence</p>
+    <div className="app-container">
+      {/* NAVBAR */}
+      <header className="navbar">
+        <div className="brand-section">
+          <div className="brand-logo-badge">
+            <ShieldAlert size={22} />
+          </div>
+          <div className="brand-title-wrap">
+            <span className="brand-title">IncidentQ</span>
+            <span className="brand-tagline">Reliability & Incident Management Operations</span>
           </div>
         </div>
 
-        <div className="operations-auth-message">
-          <span className="operations-auth-eyebrow">INCIDENT OPERATIONS</span>
-          <h2>Monitor incidents. Understand root causes. Resolve faster.</h2>
-          <p>
-            A clearer view of your incident response, from first signal to
-            resolution.
-          </p>
+        <div className="nav-center-status">
+          <div className="status-dot pulse-indicator" />
+          <span>Nominal Operations</span>
+          <span style={{ color: "var(--border-strong)" }}>&middot;</span>
+          <Server size={13} color="var(--cyan)" />
+          <span>Availability: 99.98%</span>
+          <span style={{ color: "var(--border-strong)" }}>&middot;</span>
+          <span>Cluster: us-east-1</span>
         </div>
 
-        <div className="operations-auth-workflow" aria-hidden="true">
-          <span className="operations-auth-workflow-line" />
-          <div><span>01</span><strong>Monitor</strong></div>
-          <div><span>02</span><strong>Understand</strong></div>
-          <div><span>03</span><strong>Resolve</strong></div>
-        </div>
-        <div className="operations-auth-brand-footer">
-          <span className="operations-auth-footer-mark" />
-          <span>Built for clear, confident incident response</span>
-        </div>
-      </section>
-
-      <section className="operations-auth-form-panel">
-        <div className="operations-auth-card">
-          <div className="operations-auth-card-kicker">
-            {authPage === "login" ? "WELCOME BACK" : "GET STARTED"}
-          </div>
-          <h2>
-            {authPage === "login" ? "Welcome back" : "Create your account"}
-          </h2>
-          <p className="operations-auth-subtitle">
-            {authPage === "login"
-              ? "Sign in to continue to your incident workspace."
-              : "Join IncidentIQ and manage incidents with intelligence."}
-          </p>
-
-          <form
-            className="operations-auth-form"
-            onSubmit={authPage === "login" ? login : register}
+        <div className="nav-actions">
+          {/* UPLOAD / INGEST BUTTON */}
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              setShowUploadModal(true);
+              setTimeout(() => {
+                if (uploadModalRef.current) {
+                  gsap.fromTo(
+                    uploadModalRef.current,
+                    { scale: 0.95, opacity: 0 },
+                    { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(1.2)" }
+                  );
+                }
+              }, 10);
+            }}
           >
-            {authPage === "register" && (
-              <div className="operations-auth-field">
-                <label htmlFor="auth-name">Name</label>
-                <input
-                  id="auth-name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Your name"
-                  required
-                />
+            <UploadCloud size={16} color="var(--cyan)" />
+            <span>Upload Incidents</span>
+          </button>
+
+          {/* RECORD INCIDENT BUTTON */}
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setShowCreateModal(true);
+              setTimeout(() => {
+                if (modalRef.current) {
+                  gsap.fromTo(
+                    modalRef.current,
+                    { scale: 0.94, opacity: 0 },
+                    { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(1.4)" }
+                  );
+                }
+              }, 10);
+            }}
+          >
+            <Plus size={16} />
+            <span>Record Incident</span>
+          </button>
+
+          {/* USER PROFILE BADGE */}
+          <div className="user-profile-badge">
+            <div className="user-avatar">{currentUser?.name?.charAt(0) || "J"}</div>
+            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+              <span style={{ fontWeight: 600, fontSize: "0.82rem", color: "#fff" }}>
+                {currentUser?.name || "Joe Miller"}
+              </span>
+              <span style={{ fontSize: "0.68rem", color: "var(--cyan-light)" }}>
+                {currentUser?.role || "Incident Operations Commander"}
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign Out of Session"
+              style={{
+                background: "none",
+                color: "var(--text-muted)",
+                display: "flex",
+                alignItems: "center",
+                marginLeft: "0.4rem",
+              }}
+            >
+              <LogOut size={15} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN COCKPIT VIEW */}
+      <main className="main-wrapper">
+        {/* KPI TELEMETRY CARDS (CALCULATED DISTINCT FIGURES) */}
+        <section className="kpi-grid" ref={kpiGridRef}>
+          <div className="kpi-card kpi-total" onClick={() => setStatusFilter("")}>
+            <div className="kpi-header">
+              <span className="kpi-title">Total Incidents</span>
+              <div className="kpi-icon-wrap" style={{ color: "var(--indigo-light)" }}>
+                <Activity size={18} />
               </div>
+            </div>
+            <div className="kpi-value">{analytics.totalIncidents}</div>
+            <div className="kpi-footer">
+              <span>All recorded operational events</span>
+              <TrendingUp size={14} color="var(--indigo-light)" />
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-open" onClick={() => setStatusFilter("OPEN")}>
+            <div className="kpi-header">
+              <span className="kpi-title">Active Triage</span>
+              <div className="kpi-icon-wrap" style={{ color: "var(--cyan-light)" }}>
+                <Clock size={18} />
+              </div>
+            </div>
+            <div className="kpi-value">{analytics.openIncidents}</div>
+            <div className="kpi-footer">
+              <span>Awaiting responder analysis</span>
+              <span style={{ color: "var(--cyan-light)" }}>Open</span>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-progress" onClick={() => setStatusFilter("IN_PROGRESS")}>
+            <div className="kpi-header">
+              <span className="kpi-title">In Remediation</span>
+              <div className="kpi-icon-wrap" style={{ color: "var(--amber-light)" }}>
+                <RefreshCw size={18} />
+              </div>
+            </div>
+            <div className="kpi-value">{analytics.inProgressIncidents}</div>
+            <div className="kpi-footer">
+              <span>Investigation & mitigation active</span>
+              <span style={{ color: "var(--amber-light)" }}>In Progress</span>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-resolved" onClick={() => setStatusFilter("RESOLVED")}>
+            <div className="kpi-header">
+              <span className="kpi-title">Resolved & Mitigated</span>
+              <div className="kpi-icon-wrap" style={{ color: "var(--emerald-light)" }}>
+                <CheckCircle2 size={18} />
+              </div>
+            </div>
+            <div className="kpi-value">{analytics.resolvedIncidents}</div>
+            <div className="kpi-footer">
+              <span>Verified with post-mortem record</span>
+              <span style={{ color: "var(--emerald-light)" }}>Mitigated</span>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-critical" onClick={() => setSeverityFilter("CRITICAL")}>
+            <div className="kpi-header">
+              <span className="kpi-title">Critical P0 Outages</span>
+              <div className="kpi-icon-wrap" style={{ color: "var(--rose-light)" }}>
+                <AlertTriangle size={18} />
+              </div>
+            </div>
+            <div className="kpi-value">{analytics.criticalIncidents}</div>
+            <div className="kpi-footer">
+              <span>High customer & SLO impact</span>
+              <span style={{ color: "var(--rose-light)" }}>P0 Severity</span>
+            </div>
+          </div>
+        </section>
+
+        {/* CONTROLS & REFINED FILTER TOOLBAR */}
+        <section className="controls-bar">
+          <div className="search-input-wrap">
+            <Search size={16} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search incidents by title, description, symptoms, or error log..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="filters-group">
+            <select
+              className="filter-select"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Status: All</option>
+              <option value="OPEN">Open (Triage)</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="RESOLVED">Resolved</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+
+            <select
+              className="filter-select"
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+            >
+              <option value="">Severity: All</option>
+              <option value="CRITICAL">P0 - Critical</option>
+              <option value="HIGH">P1 - High</option>
+              <option value="MEDIUM">P2 - Medium</option>
+              <option value="LOW">P3 - Low</option>
+            </select>
+
+            <select
+              className="filter-select"
+              value={environmentFilter}
+              onChange={(e) => setEnvironmentFilter(e.target.value)}
+            >
+              <option value="">Environment: All</option>
+              <option value="PRODUCTION">Production</option>
+              <option value="STAGING">Staging</option>
+              <option value="QA">QA / Test</option>
+            </select>
+
+            <select
+              className="filter-select"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">Domain: All</option>
+              <option value="PAYMENT_GATEWAY">Payment Gateway</option>
+              <option value="STORAGE_TIER">Storage & Persistence</option>
+              <option value="WEB_GATEWAY">Web Ingress & CDN</option>
+              <option value="SECURITY_AUTH">Identity & Auth</option>
+              <option value="MICROSERVICES">Core Microservices</option>
+              <option value="INFRASTRUCTURE">Cloud Infrastructure</option>
+            </select>
+
+            {(statusFilter || severityFilter || environmentFilter || categoryFilter || searchQuery) && (
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setStatusFilter("");
+                  setSeverityFilter("");
+                  setEnvironmentFilter("");
+                  setCategoryFilter("");
+                  setSearchQuery("");
+                }}
+              >
+                <X size={14} />
+                <span>Clear Filters</span>
+              </button>
             )}
 
-            <div className="operations-auth-field">
-              <label htmlFor="auth-email">Email</label>
+            {/* RESET / CLEAN WORKSPACE BUTTON */}
+            <button
+              className="btn-secondary"
+              style={{ color: "#fb7185", borderColor: "rgba(244,63,94,0.3)" }}
+              onClick={() => setShowResetConfirm(true)}
+              title="Clear all sample incidents and start clean"
+            >
+              <Trash2 size={14} />
+              <span>Reset to Clean Workspace</span>
+            </button>
+          </div>
+        </section>
+
+        {/* INCIDENT DATA TABLE (ZERO DUPLICATE COLUMNS) */}
+        <section className="table-container" ref={tableContainerRef}>
+          <table className="incident-table">
+            <thead>
+              <tr>
+                <th style={{ width: "65px" }}>ID</th>
+                <th>Incident Details & Symptoms</th>
+                <th>Environment</th>
+                <th>Domain Tier</th>
+                <th>Severity</th>
+                <th>Response SLA / Target</th>
+                <th>Status</th>
+                <th>Responder</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingIncidents ? (
+                <tr>
+                  <td colSpan={9} style={{ textAlign: "center", padding: "3rem" }}>
+                    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.75rem" }}>
+                      <RefreshCw size={18} className="pulse-indicator" color="var(--indigo-light)" />
+                      <span>Loading operational telemetry...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : incidents.length === 0 ? (
+                <tr>
+                  <td colSpan={9}>
+                    <div className="empty-state-box">
+                      <FileText size={38} color="var(--text-muted)" />
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                        <span style={{ fontWeight: 600, color: "#fff", fontSize: "1rem" }}>
+                          No operational incidents found
+                        </span>
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", maxWidth: "420px" }}>
+                          Your workspace is clean. Click "Upload Incidents" to import telemetry logs or "Record Incident" to declare a new event.
+                        </span>
+                      </div>
+                      <button className="btn-primary" onClick={() => setShowUploadModal(true)}>
+                        <UploadCloud size={16} />
+                        <span>Upload Incident Telemetry</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                incidents.map((inc) => {
+                  const sla = getSlaIndicator(inc.severity, inc.status);
+                  return (
+                    <tr
+                      key={inc.id}
+                      className="incident-row"
+                      onClick={() => openIncidentDetails(inc)}
+                    >
+                      <td className="table-id-cell">#{inc.id}</td>
+                      <td>
+                        <div className="table-title-wrap">
+                          <span className="table-incident-title">{inc.title}</span>
+                          <span className="table-incident-desc">{inc.description}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge" style={{ background: "rgba(255,255,255,0.06)", color: "#cbd5e1" }}>
+                          {inc.environment || "PRODUCTION"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="badge badge-category">{inc.category || "GENERAL"}</span>
+                      </td>
+                      <td>
+                        <span className={`badge badge-sev-${(inc.severity || "LOW").toLowerCase()}`}>
+                          {inc.severity}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`sla-badge ${sla.cls}`}>
+                          <Clock size={12} />
+                          <span>{sla.text}</span>
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge badge-status-${(inc.status || "OPEN").toLowerCase()}`}>
+                          {inc.status}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "0.82rem", color: inc.assignee ? "#fff" : "var(--text-muted)" }}>
+                          {inc.assignee ? inc.assignee.split("@")[0] : "Unassigned"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: "0.5rem" }}>
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "0.35rem 0.65rem", fontSize: "0.75rem" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openIncidentDetails(inc);
+                            }}
+                            title="Inspect Incident"
+                          >
+                            <Eye size={13} />
+                            <span>Inspect</span>
+                          </button>
+                          <button
+                            className="btn-danger"
+                            style={{ padding: "0.35rem 0.65rem" }}
+                            onClick={(e) => handleDeleteIncident(e, inc.id)}
+                            title="Delete Incident"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+
+          {/* TABLE PAGINATION */}
+          <div className="pagination-bar">
+            <span>
+              Showing {incidents.length} of {totalElements} incidents &middot; Page {page + 1} of {totalPages}
+            </span>
+            <div className="pagination-btn-group">
+              <button
+                className="page-btn"
+                disabled={page <= 0}
+                onClick={() => loadIncidents(page - 1)}
+              >
+                Previous
+              </button>
+              <button
+                className="page-btn"
+                disabled={page >= totalPages - 1}
+                onClick={() => loadIncidents(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ====================================================
+          SLIDE-OVER INCIDENT DETAIL WORKSPACE
+          ==================================================== */}
+      {selectedIncident && (
+        <div className="drawer-backdrop" onClick={() => setSelectedIncident(null)}>
+          <div className="incident-drawer" ref={drawerRef} onClick={(e) => e.stopPropagation()}>
+            {/* DRAWER HEADER */}
+            <div className="drawer-header">
+              <div className="drawer-top-row">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <span className="badge badge-category">#{selectedIncident.id}</span>
+                  <span className="badge" style={{ background: "rgba(255,255,255,0.08)", color: "#e2e8f0" }}>
+                    {selectedIncident.environment || "PRODUCTION"}
+                  </span>
+                  <span className={`badge badge-status-${selectedIncident.status.toLowerCase()}`}>
+                    {selectedIncident.status}
+                  </span>
+                  <span className={`badge badge-sev-${selectedIncident.severity.toLowerCase()}`}>
+                    {selectedIncident.severity}
+                  </span>
+                </div>
+                <button className="drawer-close-btn" onClick={() => setSelectedIncident(null)}>
+                  <X size={18} />
+                </button>
+              </div>
+
               <input
-                id="auth-email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@company.com"
-                required
+                type="text"
+                className="drawer-title-input"
+                defaultValue={selectedIncident.title}
+                onBlur={(e) => {
+                  const newTitle = e.target.value.trim();
+                  if (newTitle && newTitle !== selectedIncident.title) {
+                    fetch(`${API_BASE}/api/incidents/${selectedIncident.id}`, {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ title: newTitle }),
+                    }).then((r) => {
+                      if (r.ok) {
+                        setSelectedIncident((prev) => ({ ...prev, title: newTitle }));
+                        loadIncidents();
+                        showToast("Title updated in incident log", "success");
+                      }
+                    });
+                  }
+                }}
               />
             </div>
 
-            <div className="operations-auth-field">
-              <label htmlFor="auth-password">Password</label>
-              <div className="operations-auth-password">
-                <input
-                  id="auth-password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete={
-                    authPage === "login" ? "current-password" : "new-password"
-                  }
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Enter your password"
-                  required
-                />
+            {/* DRAWER NAVIGATION TABS */}
+            <div className="drawer-tabs">
+              <button
+                className={`drawer-tab ${drawerTab === "overview" ? "active" : ""}`}
+                onClick={() => setDrawerTab("overview")}
+              >
+                <Layers size={14} />
+                <span>Overview & Workflow</span>
+              </button>
+              <button
+                className={`drawer-tab ${drawerTab === "diagnostics" ? "active" : ""}`}
+                onClick={() => setDrawerTab("diagnostics")}
+              >
+                <Activity size={14} />
+                <span>Root-Cause Diagnostics</span>
+              </button>
+              <button
+                className={`drawer-tab ${drawerTab === "audit" ? "active" : ""}`}
+                onClick={() => setDrawerTab("audit")}
+              >
+                <Clock size={14} />
+                <span>Audit Trail ({auditLogs.length})</span>
+              </button>
+              <button
+                className={`drawer-tab ${drawerTab === "comments" ? "active" : ""}`}
+                onClick={() => setDrawerTab("comments")}
+              >
+                <MessageSquare size={14} />
+                <span>Notes ({comments.length})</span>
+              </button>
+              <button
+                className={`drawer-tab ${drawerTab === "resolutions" ? "active" : ""}`}
+                onClick={() => setDrawerTab("resolutions")}
+              >
+                <CheckCircle2 size={14} />
+                <span>Formal Resolutions ({resolutions.length})</span>
+              </button>
+            </div>
+
+            {/* DRAWER BODY TABS */}
+            <div className="drawer-body">
+              {/* TAB 1: OVERVIEW & STATUS PIPELINE */}
+              {drawerTab === "overview" && (
+                <>
+                  <div className="workflow-pipeline-card">
+                    <span className="form-label">Lifecycle Status Progression</span>
+                    <div className="pipeline-stepper">
+                      {["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].map((st, idx) => {
+                        const statusOrder = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+                        const currentIdx = statusOrder.indexOf(selectedIncident.status);
+                        const isCompleted = currentIdx > idx;
+                        const isActive = currentIdx === idx;
+                        return (
+                          <div
+                            key={st}
+                            className={`pipeline-step ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""}`}
+                            onClick={() => handleUpdateStatus(st)}
+                          >
+                            <div className="step-node">
+                              {isCompleted ? <Check size={14} /> : idx + 1}
+                            </div>
+                            <span className="step-label">{st.replace("_", " ")}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* METADATA ATTRIBUTES */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="glass-panel" style={{ padding: "1rem" }}>
+                      <span className="form-label">Assigned Responder</span>
+                      <select
+                        className="form-select"
+                        style={{ marginTop: "0.4rem", width: "100%" }}
+                        value={selectedIncident.assignee || ""}
+                        onChange={(e) => handleUpdateAssignee(e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        <option value="joe.miller@incidentq.com">Joe Miller (Incident Commander)</option>
+                        <option value="alex.chen@incidentq.com">Alex Chen (Lead Reliability Engineer)</option>
+                        <option value="sara.connor@incidentq.com">Sara Connor (Site Reliability Engineer)</option>
+                        <option value="elena.rostova@incidentq.com">Elena Rostova (Principal Systems Architect)</option>
+                      </select>
+                    </div>
+
+                    <div className="glass-panel" style={{ padding: "1rem" }}>
+                      <span className="form-label">Incident Reporter</span>
+                      <p style={{ marginTop: "0.5rem", fontSize: "0.86rem", color: "#fff", fontWeight: 500 }}>
+                        {selectedIncident.reporter || "system@incidentq.com"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* PROBLEM STATEMENT */}
+                  <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
+                      <span className="form-label">Symptoms & Operational Impact</span>
+                      <span className="badge" style={{ background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>
+                        Environment: {selectedIncident.environment || "PRODUCTION"}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: "0.9rem", color: "var(--text-primary)", lineHeight: 1.6 }}>
+                      {selectedIncident.description || "No detailed description provided."}
+                    </p>
+                  </div>
+
+                  {/* CAPTURED ERROR MESSAGE */}
+                  {selectedIncident.error_message && (
+                    <div className="glass-panel" style={{ padding: "1.25rem", borderLeft: "3px solid var(--rose)" }}>
+                      <span className="form-label" style={{ color: "var(--rose-light)" }}>Captured Exception / Error Message</span>
+                      <code style={{ display: "block", marginTop: "0.5rem", background: "rgba(244,63,94,0.08)", color: "#fecdd3", padding: "0.6rem 0.8rem", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
+                        {selectedIncident.error_message}
+                      </code>
+                    </div>
+                  )}
+
+                  {/* SYSTEM LOGS */}
+                  {selectedIncident.logs && (
+                    <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                      <span className="form-label">Captured Telemetry Logs & Stack Trace</span>
+                      <pre style={{ marginTop: "0.5rem", background: "rgba(10,14,23,0.8)", border: "1px solid var(--border-subtle)", color: "#94a3b8", padding: "0.75rem", borderRadius: "var(--radius-sm)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", whiteSpace: "pre-wrap", maxHeight: "180px", overflowY: "auto" }}>
+                        {selectedIncident.logs}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* SIMILAR HISTORICAL INCIDENTS */}
+                  {similarIncidents.length > 0 && (
+                    <div className="glass-panel" style={{ padding: "1.25rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                        <span className="form-label">Correlated Historical Events</span>
+                        <span style={{ fontSize: "0.72rem", color: "var(--cyan-light)" }}>Vector Similarity Match</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                        {similarIncidents.map((s) => (
+                          <div
+                            key={s.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              background: "rgba(255,255,255,0.03)",
+                              padding: "0.65rem 0.9rem",
+                              borderRadius: "var(--radius-sm)",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => openIncidentDetails(s)}
+                          >
+                            <span style={{ fontSize: "0.84rem", color: "#fff", fontWeight: 500 }}>
+                              #{s.id} &middot; {s.title}
+                            </span>
+                            <span className="badge" style={{ background: "rgba(6,182,212,0.15)", color: "var(--cyan)" }}>
+                              {s.similarityScore}% Correlated
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* TAB 2: ROOT-CAUSE DIAGNOSTICS STUDIO */}
+              {drawerTab === "diagnostics" && (
+                <div className="diagnostics-hub-container">
+                  <div className="diagnostics-hero-card" ref={diagCardRef}>
+                    {scanningEffect && <div className="neural-scanline" />}
+                    <div className="diagnostics-hero-header">
+                      <div className="diagnostics-hero-badge">
+                        <Cpu size={14} />
+                        <span>Automated Root-Cause Diagnostic Engine</span>
+                      </div>
+                      <button
+                        className="btn-diagnostics"
+                        onClick={handleRunDiagnostics}
+                        disabled={diagnosticsLoading}
+                      >
+                        {diagnosticsLoading ? (
+                          <>
+                            <RefreshCw size={15} className="pulse-indicator" />
+                            <span>Correlating Signal Telemetry...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Activity size={15} />
+                            <span>Run Diagnostic Analysis</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: "0.84rem", color: "#cbd5e1" }}>
+                      Correlates symptom signatures, captured error logs, and cluster telemetry to synthesize core root-cause hypotheses and generate structured runbooks.
+                    </p>
+                  </div>
+
+                  {diagnosticsResult && (
+                    <>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                        <div className="diag-output-box">
+                          <span className="diag-output-title">Root-Cause Hypothesis</span>
+                          <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", lineHeight: 1.55 }}>
+                            {diagnosticsResult.rootCause}
+                          </p>
+                        </div>
+                        <div className="diag-output-box">
+                          <span className="diag-output-title">Contributing Factors & Anomalies</span>
+                          <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", lineHeight: 1.55 }}>
+                            {diagnosticsResult.possibleCause}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="diag-output-box">
+                        <span className="diag-output-title">Recommended Remediation Action Plan</span>
+                        <ul className="diag-action-list">
+                          {diagnosticsResult.recommendedActions?.map((act, i) => (
+                            <li key={i} className="diag-action-item">
+                              <CheckCircle2 size={15} color="var(--cyan)" style={{ flexShrink: 0, marginTop: "2px" }} />
+                              <span>{act}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="diag-output-box">
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span className="diag-output-title">Automated Troubleshooting Runbook</span>
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: "0.35rem 0.75rem", fontSize: "0.76rem" }}
+                            onClick={handleGenerateRunbook}
+                            disabled={diagnosticsLoading}
+                          >
+                            <SlidersHorizontal size={13} />
+                            <span>Generate Step-by-Step Runbook</span>
+                          </button>
+                        </div>
+
+                        {troubleshootingRunbook && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.5rem" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                              {troubleshootingRunbook.troubleshootingSteps?.map((st, i) => (
+                                <div key={i} style={{ display: "flex", gap: "0.5rem", fontSize: "0.82rem", color: "#e2e8f0" }}>
+                                  <strong style={{ color: "var(--indigo-light)" }}>Step {i + 1}:</strong>
+                                  <span>{st}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: "var(--radius-sm)", padding: "0.75rem" }}>
+                              <strong style={{ color: "var(--emerald-light)", fontSize: "0.78rem", textTransform: "uppercase" }}>
+                                Proposed Formal Resolution
+                              </strong>
+                              <p style={{ fontSize: "0.82rem", color: "#fff", marginTop: "0.25rem", lineHeight: 1.5 }}>
+                                {troubleshootingRunbook.suggestedResolution}
+                              </p>
+                              <button
+                                className="btn-secondary"
+                                style={{ marginTop: "0.5rem", fontSize: "0.75rem", padding: "0.35rem 0.65rem" }}
+                                onClick={() => {
+                                  setNewResolutionText(troubleshootingRunbook.suggestedResolution);
+                                  setDrawerTab("resolutions");
+                                  showToast("Resolution copied to formal log", "info");
+                                }}
+                              >
+                                Apply to Resolution Tab
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: AUDIT TIMELINE */}
+              {drawerTab === "audit" && (
+                <div className="timeline-container">
+                  {auditLogs.length === 0 ? (
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.84rem" }}>No audit events recorded yet.</p>
+                  ) : (
+                    auditLogs.map((log) => (
+                      <div key={log.id} className="timeline-item">
+                        <div className="timeline-bullet" />
+                        <div className="timeline-content">
+                          <div className="timeline-header">
+                            <span className="timeline-action">{log.action}</span>
+                            <span className="timeline-time">
+                              {new Date(log.changedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                            By: <strong>{log.changedBy}</strong>
+                          </p>
+                          {log.oldValue && (
+                            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+                              Previous: {log.oldValue} &rarr; New: <strong>{log.newValue}</strong>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: INVESTIGATION NOTES & COMMENTS */}
+              {drawerTab === "comments" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <form onSubmit={handleAddComment} style={{ display: "flex", gap: "0.6rem" }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Add an engineering finding or link to monitoring dashboard..."
+                      style={{ flex: 1 }}
+                      value={newCommentText}
+                      onChange={(e) => setNewCommentText(e.target.value)}
+                    />
+                    <button type="submit" className="btn-primary">
+                      <Send size={15} />
+                      <span>Post</span>
+                    </button>
+                  </form>
+
+                  <div className="comments-feed">
+                    {comments.length === 0 ? (
+                      <p style={{ color: "var(--text-muted)", fontSize: "0.84rem" }}>No investigation notes logged yet.</p>
+                    ) : (
+                      comments.map((c) => (
+                        <div key={c.id} className="comment-card">
+                          <div className="comment-header">
+                            <span className="comment-author">{c.userEmail}</span>
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                              {new Date(c.createdAt).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.86rem", color: "var(--text-primary)" }}>{c.comment}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: FORMAL RESOLUTIONS */}
+              {drawerTab === "resolutions" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+                  <form onSubmit={handleAddResolution} className="glass-panel" style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+                    <span className="form-label">Record Formal Resolution</span>
+                    <textarea
+                      rows={3}
+                      className="form-textarea"
+                      placeholder="Detail root cause remediation, patch deployment version, and verification telemetry..."
+                      value={newResolutionText}
+                      onChange={(e) => setNewResolutionText(e.target.value)}
+                    />
+                    <button type="submit" className="btn-primary" style={{ alignSelf: "flex-end" }}>
+                      <CheckCircle2 size={16} />
+                      <span>Mark Resolved & Save Record</span>
+                    </button>
+                  </form>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <span className="form-label">Resolution History</span>
+                    {resolutions.length === 0 ? (
+                      <p style={{ color: "var(--text-muted)", fontSize: "0.84rem" }}>No formal resolutions logged yet.</p>
+                    ) : (
+                      resolutions.map((r) => (
+                        <div key={r.id} className="glass-panel" style={{ padding: "1rem", borderLeft: "3px solid var(--emerald)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+                            <strong style={{ fontSize: "0.84rem", color: "#fff" }}>Resolved by {r.resolvedBy}</strong>
+                            <span style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+                              {new Date(r.resolvedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: "0.86rem", color: "#cbd5e1" }}>{r.resolution}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================
+          UPLOAD & INGEST INCIDENTS MODAL
+          ==================================================== */}
+      {showUploadModal && (
+        <div className="modal-backdrop" onClick={() => setShowUploadModal(false)}>
+          <div className="modal-dialog" ref={uploadModalRef} onClick={(e) => e.stopPropagation()} style={{ maxWidth: "620px" }}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <UploadCloud size={20} color="var(--cyan)" />
+                <h3 style={{ fontSize: "1.1rem" }}>Upload & Ingest Incident Telemetry</h3>
+              </div>
+              <button className="drawer-close-btn" onClick={() => setShowUploadModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* UPLOAD TABS */}
+              <div className="auth-tab-bar" style={{ marginBottom: "0.5rem" }}>
                 <button
-                  className="operations-auth-password-toggle"
                   type="button"
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
+                  className={`auth-tab-btn ${uploadTab === "file" ? "active" : ""}`}
+                  onClick={() => setUploadTab("file")}
                 >
-                  {showPassword ? "Hide" : "Show"}
+                  Structured File (.json / .csv)
+                </button>
+                <button
+                  type="button"
+                  className={`auth-tab-btn ${uploadTab === "log" ? "active" : ""}`}
+                  onClick={() => setUploadTab("log")}
+                >
+                  Raw Stack Trace / Log Paste
                 </button>
               </div>
+
+              {uploadTab === "file" ? (
+                <>
+                  <label
+                    htmlFor="incident-file-input"
+                    className="upload-dropzone"
+                  >
+                    <UploadCloud size={36} color="var(--indigo-light)" />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                      <span style={{ fontWeight: 600, color: "#fff", fontSize: "0.92rem" }}>
+                        Click to select incident file or drag & drop
+                      </span>
+                      <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                        Supports JSON array of incidents or operational log exports
+                      </span>
+                    </div>
+                    {uploadFile && (
+                      <span className="badge" style={{ background: "rgba(16,185,129,0.15)", color: "var(--emerald)" }}>
+                        {uploadFile.name} ({parsedPreview.length} incident record(s) parsed)
+                      </span>
+                    )}
+                    <input
+                      id="incident-file-input"
+                      type="file"
+                      accept=".json,.csv,.txt,.log"
+                      style={{ display: "none" }}
+                      onChange={handleFileSelect}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                      Need the standard schema format?
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.75rem" }}
+                      onClick={downloadSampleTemplate}
+                    >
+                      <Download size={13} />
+                      <span>Download JSON Template</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <form onSubmit={handleIngestRawLog} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  <div className="form-group">
+                    <label className="form-label">Incident Headline / Summary</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Gateway Connection Reset by Peer"
+                      value={rawLogTitle}
+                      onChange={(e) => setRawLogTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="form-group">
+                      <label className="form-label">Target Environment</label>
+                      <select
+                        className="form-select"
+                        value={rawLogEnv}
+                        onChange={(e) => setRawLogEnv(e.target.value)}
+                      >
+                        <option value="PRODUCTION">Production</option>
+                        <option value="STAGING">Staging</option>
+                        <option value="QA">QA</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Severity Tier</label>
+                      <select
+                        className="form-select"
+                        value={rawLogSeverity}
+                        onChange={(e) => setRawLogSeverity(e.target.value)}
+                      >
+                        <option value="CRITICAL">P0 - Critical</option>
+                        <option value="HIGH">P1 - High</option>
+                        <option value="MEDIUM">P2 - Medium</option>
+                        <option value="LOW">P3 - Low</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Server Log / Stack Trace Content *</label>
+                    <textarea
+                      rows={5}
+                      className="form-textarea"
+                      style={{ fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}
+                      placeholder="Paste terminal exception, Nginx log line, or application stack dump..."
+                      value={rawLogText}
+                      onChange={(e) => setRawLogText(e.target.value)}
+                      required
+                    />
+                  </div>
+                </form>
+              )}
             </div>
 
-            <button
-              className="operations-auth-submit"
-              type="submit"
-              disabled={loading}
-            >
-              {loading
-                ? authPage === "login"
-                  ? "Signing in..."
-                  : "Creating account..."
-                : authPage === "login"
-                  ? "Sign In"
-                  : "Register"}
-            </button>
-          </form>
-
-          {message && (
-            <div
-              className={`operations-auth-feedback ${
-                messageType === "success" ? "is-success" : "is-error"
-              }`}
-              role={messageType === "success" ? "status" : "alert"}
-              aria-live={messageType === "success" ? "polite" : "assertive"}
-            >
-              <span className="operations-auth-feedback-icon" aria-hidden="true">
-                {messageType === "success" ? "✓" : "!"}
-              </span>
-              <span>{message}</span>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowUploadModal(false)}
+              >
+                Cancel
+              </button>
+              {uploadTab === "file" ? (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={uploading || parsedPreview.length === 0}
+                  onClick={handleExecuteUpload}
+                >
+                  {uploading ? (
+                    <RefreshCw size={15} className="pulse-indicator" />
+                  ) : (
+                    <UploadCloud size={15} />
+                  )}
+                  <span>Ingest {parsedPreview.length ? `(${parsedPreview.length} Records)` : "Records"}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={uploading || !rawLogText.trim()}
+                  onClick={handleIngestRawLog}
+                >
+                  {uploading ? <RefreshCw size={15} className="pulse-indicator" /> : <Terminal size={15} />}
+                  <span>Ingest Telemetry Log</span>
+                </button>
+              )}
             </div>
-          )}
-
-          <p className="operations-auth-switch">
-            {authPage === "login"
-              ? "Don't have an account?"
-              : "Already have an account?"}
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                setAuthPage(authPage === "login" ? "register" : "login");
-                setMessage("");
-              }}
-            >
-              {authPage === "login" ? "Create account" : "Sign in"}
-            </button>
-          </p>
+          </div>
         </div>
-      </section>
-    </main>
+      )}
+
+      {/* ====================================================
+          RECORD NEW INCIDENT MODAL
+          ==================================================== */}
+      {showCreateModal && (
+        <div className="modal-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-dialog" ref={modalRef} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <Plus size={18} color="var(--indigo-light)" />
+                <h3 style={{ fontSize: "1.1rem" }}>Record Operational Incident</h3>
+              </div>
+              <button className="drawer-close-btn" onClick={() => setShowCreateModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateIncident}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Incident Title *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Payment Gateway Webhook Latency Degradation"
+                    value={createForm.title}
+                    onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Detailed Symptoms & Description</label>
+                  <textarea
+                    rows={3}
+                    className="form-textarea"
+                    placeholder="Describe impact, customer visibility, affected endpoints, and timeline..."
+                    value={createForm.description}
+                    onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="form-group">
+                    <label className="form-label">Domain Tier</label>
+                    <select
+                      className="form-select"
+                      value={createForm.category}
+                      onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                    >
+                      <option value="INFRASTRUCTURE">Cloud Infrastructure</option>
+                      <option value="STORAGE_TIER">Storage & Persistence</option>
+                      <option value="SECURITY_AUTH">Identity & Access</option>
+                      <option value="PAYMENT_GATEWAY">Payment Gateway</option>
+                      <option value="WEB_GATEWAY">Web Ingress & CDN</option>
+                      <option value="MICROSERVICES">Core Microservices</option>
+                      <option value="NETWORKING">Service Mesh & Ingress</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Target Environment</label>
+                    <select
+                      className="form-select"
+                      value={createForm.environment}
+                      onChange={(e) => setCreateForm({ ...createForm, environment: e.target.value })}
+                    >
+                      <option value="PRODUCTION">Production</option>
+                      <option value="STAGING">Staging</option>
+                      <option value="QA">QA / Testing</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="form-group">
+                    <label className="form-label">Severity Level</label>
+                    <select
+                      className="form-select"
+                      value={createForm.severity}
+                      onChange={(e) => setCreateForm({ ...createForm, severity: e.target.value })}
+                    >
+                      <option value="CRITICAL">P0 - Critical Outage</option>
+                      <option value="HIGH">P1 - High Degradation</option>
+                      <option value="MEDIUM">P2 - Moderate Disruption</option>
+                      <option value="LOW">P3 - Low Advisory</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Initial Responder</label>
+                    <select
+                      className="form-select"
+                      value={createForm.assignee}
+                      onChange={(e) => setCreateForm({ ...createForm, assignee: e.target.value })}
+                    >
+                      <option value="joe.miller@incidentq.com">Joe Miller (Incident Commander)</option>
+                      <option value="alex.chen@incidentq.com">Alex Chen (Lead Reliability Engineer)</option>
+                      <option value="sara.connor@incidentq.com">Sara Connor (Site Reliability Engineer)</option>
+                      <option value="elena.rostova@incidentq.com">Elena Rostova (Principal Systems Architect)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Captured Error Message / Exception (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Ingress Gateway Timeout (502 Bad Gateway)"
+                    value={createForm.error_message}
+                    onChange={(e) => setCreateForm({ ...createForm, error_message: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Diagnostic Logs / Stack Trace (Optional)</label>
+                  <textarea
+                    rows={3}
+                    className="form-textarea"
+                    style={{ fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}
+                    placeholder="Paste relevant stack trace or server log lines..."
+                    value={createForm.logs}
+                    onChange={(e) => setCreateForm({ ...createForm, logs: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowCreateModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={creating}>
+                  {creating ? <RefreshCw size={15} className="pulse-indicator" /> : <Plus size={15} />}
+                  <span>Record Incident</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================
+          CONFIRM CLEAR WORKSPACE MODAL
+          ==================================================== */}
+      {showResetConfirm && (
+        <div className="modal-backdrop" onClick={() => setShowResetConfirm(false)}>
+          <div className="modal-dialog" style={{ maxWidth: "460px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <AlertTriangle size={18} color="var(--rose)" />
+                <h3 style={{ fontSize: "1.05rem" }}>Reset to Clean Workspace</h3>
+              </div>
+              <button className="drawer-close-btn" onClick={() => setShowResetConfirm(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: "0.88rem", color: "#cbd5e1", lineHeight: 1.5 }}>
+                This will clear sample records from the repository so you can work exclusively with your own uploaded incidents.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowResetConfirm(false)}>
+                Cancel
+              </button>
+              <button className="btn-danger" onClick={handleClearAllIncidents}>
+                <Trash2 size={14} />
+                <span>Confirm Clear</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING TOAST NOTIFICATIONS */}
+      <div className="toast-container">
+        {toasts.map((t) => (
+          <div key={t.id} className={`toast toast-${t.type}`}>
+            {t.type === "success" && <CheckCircle2 size={16} color="var(--emerald)" />}
+            {t.type === "error" && <AlertCircle size={16} color="var(--rose)" />}
+            {t.type === "info" && <Activity size={16} color="var(--cyan)" />}
+            <span>{t.message}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
-
-
-/* =========================
-   PRIORITY STYLE
-   ========================= */
-
-function getPriorityStyle(
-  priority
-) {
-  if (!priority) {
-    return {};
-  }
-
-  const value =
-    priority.toLowerCase();
-
-  if (
-    value === "high" ||
-    value === "critical"
-  ) {
-    return {
-      background: "#f9e2df",
-      color: "#b43c32",
-    };
-  }
-
-  if (value === "medium") {
-    return {
-      background: "#f6edd8",
-      color: "#92702c",
-    };
-  }
-
-  return {
-    background: "#e5f1e9",
-    color: "#287a55",
-  };
-}
-
-
-/* =========================
-   STYLES
-   ========================= */
-
-const styles = {
-
-  dashboard: {
-    minHeight: "100vh",
-    background: "#f8f5ef",
-    color: "#29251f",
-    fontFamily:
-      "Arial, sans-serif",
-  },
-
-  navbar: {
-    height: "76px",
-    background: "#fff",
-    borderBottom:
-      "1px solid #e0d9cf",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 45px",
-    boxSizing: "border-box",
-  },
-
-  brandArea: {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-  },
-
-  navLogo: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "9px",
-    background: "#df5a36",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-  },
-
-  navBrand: {
-    fontSize: "18px",
-    fontWeight: "bold",
-  },
-
-  navSubtitle: {
-    fontSize: "11px",
-    color: "#888078",
-    marginTop: "2px",
-  },
-
-  logoutButton: {
-    border: "1px solid #d2cbc0",
-    background: "#fff",
-    color: "#29251f",
-    borderRadius: "7px",
-    padding: "9px 15px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-
-  main: {
-    maxWidth: "1250px",
-    margin: "0 auto",
-    padding: "45px 30px 80px",
-  },
-
-  headerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: "30px",
-  },
-
-  pageLabel: {
-    fontSize: "10px",
-    letterSpacing: "1.5px",
-    fontWeight: "bold",
-    color: "#df5a36",
-    marginBottom: "8px",
-  },
-
-  title: {
-    fontSize: "36px",
-    margin: 0,
-    letterSpacing: "-1px",
-  },
-
-  subtitle: {
-    color: "#888078",
-    marginTop: "8px",
-    fontSize: "14px",
-  },
-
-  createButton: {
-    background: "#df5a36",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    padding: "13px 20px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  secondaryButton: {
-    background: "#fff",
-    color: "#29251f",
-    border: "1px solid #d2cbc0",
-    borderRadius: "7px",
-    padding: "10px 15px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  dangerButton: {
-    background: "#fff",
-    color: "#b43c32",
-    border: "1px solid #d9a49b",
-    borderRadius: "7px",
-    padding: "10px 15px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  detailHeaderButtons: {
-    display: "flex",
-    gap: "10px",
-  },
-
-  /* FORMS */
-
-  createSection: {
-    background: "#fff",
-    border: "1px solid #e0d9cf",
-    borderRadius: "12px",
-    padding: "30px",
-    marginBottom: "30px",
-  },
-
-  formHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: "25px",
-  },
-
-  closeButton: {
-    border: "none",
-    background: "transparent",
-    fontSize: "18px",
-    cursor: "pointer",
-    color: "#777067",
-  },
-
-  label: {
-    display: "block",
-    fontSize: "12px",
-    fontWeight: "bold",
-    color: "#625b52",
-    marginTop: "18px",
-    marginBottom: "7px",
-  },
-
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    border: "1px solid #d8d1c7",
-    borderRadius: "7px",
-    padding: "11px 13px",
-    background: "#fff",
-    color: "#29251f",
-    fontSize: "14px",
-    outline: "none",
-  },
-
-  textarea: {
-    width: "100%",
-    minHeight: "110px",
-    boxSizing: "border-box",
-    border: "1px solid #d8d1c7",
-    borderRadius: "7px",
-    padding: "12px 13px",
-    background: "#fff",
-    color: "#29251f",
-    fontSize: "14px",
-    resize: "vertical",
-    fontFamily:
-      "Arial, sans-serif",
-    outline: "none",
-  },
-
-  formButtons: {
-    display: "flex",
-    alignItems: "center",
-    marginTop: "25px",
-  },
-
-  cancelButton: {
-    marginLeft: "10px",
-    padding: "13px 20px",
-    border:
-      "1px solid #d2cbc0",
-    borderRadius: "8px",
-    background: "#fff",
-    color: "#29251f",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  /* STATS */
-
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(3, 1fr)",
-    gap: "18px",
-    marginBottom: "40px",
-  },
-
-  analyticsSection: {
-    background: "#fff",
-    border: "1px solid #e0d9cf",
-    borderRadius: "12px",
-    marginBottom: "30px",
-    overflow: "hidden",
-  },
-
-  analyticsMessage: {
-    padding: "16px 25px 0",
-    color: "#625b52",
-    fontSize: "13px",
-  },
-
-  analyticsError: {
-    padding: "16px 25px 0",
-    color: "#b43c32",
-    fontSize: "13px",
-  },
-
-  breakdownGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: "18px",
-    padding: "25px",
-  },
-
-  breakdownCard: {
-    border: "1px solid #e7e0d7",
-    borderRadius: "8px",
-    padding: "18px",
-  },
-
-  breakdownTitle: {
-    margin: "0 0 14px",
-    fontSize: "11px",
-    letterSpacing: "1px",
-    color: "#888078",
-  },
-
-  breakdownRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "12px",
-    padding: "8px 0",
-    borderTop: "1px solid #eee9e2",
-    color: "#29251f",
-    fontSize: "13px",
-  },
-
-  breakdownEmpty: {
-    color: "#8a837a",
-    fontSize: "13px",
-  },
-
-  statCard: {
-    background: "#fff",
-    border: "1px solid #e0d9cf",
-    borderRadius: "12px",
-    padding: "25px",
-  },
-
-  statLabel: {
-    fontSize: "11px",
-    fontWeight: "bold",
-    letterSpacing: "1.5px",
-    color: "#888078",
-  },
-
-  statNumber: {
-    fontSize: "38px",
-    fontWeight: "bold",
-    margin: "12px 0 6px",
-  },
-
-  statDescription: {
-    fontSize: "13px",
-    color: "#8a837a",
-  },
-
-  /* INCIDENT TABLE */
-
-  incidentSection: {
-    background: "#fff",
-    border:
-      "1px solid #e0d9cf",
-    borderRadius: "12px",
-    overflow: "hidden",
-  },
-
-  sectionHeader: {
-    padding: "25px",
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "center",
-    borderBottom:
-      "1px solid #e7e0d7",
-  },
-
-  filterForm: {
-    padding: "0 25px 25px",
-    borderBottom: "1px solid #e7e0d7",
-  },
-
-  filterField: {
-    display: "block",
-    minWidth: 0,
-  },
-
-  filterSelects: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: "16px",
-  },
-
-  filterActions: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginTop: "18px",
-  },
-
-  incidentError: {
-    padding: "35px 20px",
-    textAlign: "center",
-    color: "#b43c32",
-    fontSize: "14px",
-  },
-
-  pagination: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "18px",
-    padding: "20px",
-    borderTop: "1px solid #e7e0d7",
-  },
-
-  paginationLabel: {
-    color: "#625b52",
-    fontSize: "14px",
-    fontWeight: "bold",
-  },
-
-  sectionTitle: {
-    margin: 0,
-    fontSize: "20px",
-  },
-
-  sectionSubtitle: {
-    margin: "6px 0 0",
-    color: "#888078",
-    fontSize: "13px",
-  },
-
-  refreshButton: {
-    border:
-      "1px solid #d2cbc0",
-    background: "#fff",
-    borderRadius: "7px",
-    padding: "8px 14px",
-    cursor: "pointer",
-  },
-
-  tableWrapper: {
-    overflowX: "auto",
-  },
-
-  table: {
-    width: "100%",
-    borderCollapse: "collapse",
-  },
-
-  th: {
-    textAlign: "left",
-    padding: "15px 20px",
-    fontSize: "10px",
-    letterSpacing: "1px",
-    color: "#888078",
-    background: "#faf8f4",
-    borderBottom:
-      "1px solid #e7e0d7",
-  },
-
-  td: {
-    padding: "17px 20px",
-    fontSize: "14px",
-    borderBottom:
-      "1px solid #eee9e2",
-  },
-
-  detailsButton: {
-    border:
-      "1px solid #df5a36",
-    background: "#fff",
-    color: "#df5a36",
-    borderRadius: "6px",
-    padding: "7px 12px",
-    fontSize: "12px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  badge: {
-    display: "inline-block",
-    padding: "5px 9px",
-    borderRadius: "6px",
-    fontSize: "11px",
-    fontWeight: "bold",
-  },
-
-  statusBadge: {
-    display: "inline-block",
-    padding: "5px 9px",
-    borderRadius: "6px",
-    background: "#eee9e2",
-    color: "#625b52",
-    fontSize: "11px",
-    fontWeight: "bold",
-  },
-
-  emptyState: {
-    padding: "70px 20px",
-    textAlign: "center",
-    color: "#777067",
-  },
-
-  emptyIcon: {
-    width: "45px",
-    height: "45px",
-    margin: "0 auto 15px",
-    borderRadius: "50%",
-    background: "#df5a36",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-  },
-
-  /* DETAILS */
-
-  detailsSection: {
-    background: "#fff",
-    border:
-      "1px solid #e0d9cf",
-    borderRadius: "12px",
-    marginTop: "30px",
-    overflow: "hidden",
-  },
-
-  detailsHeader: {
-    padding: "28px 30px",
-    borderBottom:
-      "1px solid #e7e0d7",
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "flex-start",
-  },
-
-  detailsTitle: {
-    margin: 0,
-    fontSize: "28px",
-  },
-
-  descriptionBox: {
-    margin: "25px 30px",
-    padding: "20px",
-    background: "#faf8f4",
-    borderRadius: "9px",
-    border:
-      "1px solid #e7e0d7",
-  },
-
-  aiAnalysisSection: {
-    margin: "25px 30px",
-    padding: "20px",
-    background: "#faf8f4",
-    border: "1px solid #e7e0d7",
-    borderRadius: "9px",
-  },
-
-  aiAnalysisHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "16px",
-    flexWrap: "wrap",
-  },
-
-  lifecycleActions: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-    marginTop: "14px",
-  },
-
-  auditHistoryEntry: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    padding: "12px 0",
-    borderBottom: "1px solid #e7e0d7",
-  },
-
-  aiAnalysisStatus: {
-    margin: "16px 0 0",
-    color: "#625b52",
-    fontSize: "14px",
-  },
-
-  aiAnalysisError: {
-    margin: "16px 0 0",
-    color: "#b43c32",
-    fontSize: "14px",
-  },
-
-  aiAnalysisResult: {
-    margin: "18px 0 0",
-    padding: "16px",
-    background: "#fff",
-    border: "1px solid #e0d9cf",
-    borderRadius: "7px",
-    color: "#49433c",
-    fontFamily: "Arial, sans-serif",
-    fontSize: "14px",
-    lineHeight: "1.6",
-    whiteSpace: "pre-wrap",
-    overflowWrap: "anywhere",
-  },
-
-  aiAnalysisField: {
-    marginBottom: "14px",
-  },
-
-  aiAnalysisLabel: {
-    marginBottom: "4px",
-    color: "#625b52",
-    fontSize: "12px",
-    fontWeight: "bold",
-  },
-
-  aiAnalysisActions: {
-    margin: "6px 0 0",
-    paddingLeft: "22px",
-  },
-
-  similarIncidentItem: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: "5px",
-    padding: "12px 0",
-    borderBottom: "1px solid #e7e0d7",
-    color: "#49433c",
-    fontSize: "14px",
-    lineHeight: "1.5",
-    textAlign: "left",
-  },
-
-  similarIncidentButton: {
-    width: "100%",
-    borderTop: "none",
-    borderRight: "none",
-    borderLeft: "none",
-    background: "transparent",
-    cursor: "pointer",
-    font: "inherit",
-  },
-
-  descriptionText: {
-    margin: "10px 0 0",
-    lineHeight: "1.6",
-    fontSize: "14px",
-    color: "#49433c",
-  },
-
-  detailsGrid: {
-    display: "grid",
-    gridTemplateColumns:
-      "repeat(3, 1fr)",
-    gap: "1px",
-    background: "#e7e0d7",
-    margin: "0 30px 30px",
-    border:
-      "1px solid #e7e0d7",
-  },
-
-  detailItem: {
-    background: "#fff",
-    padding: "18px",
-  },
-
-  detailLabel: {
-    fontSize: "10px",
-    letterSpacing: "1.2px",
-    fontWeight: "bold",
-    color: "#888078",
-  },
-
-  detailValue: {
-    margin: "7px 0 0",
-    fontSize: "14px",
-    fontWeight: "bold",
-  },
-
-  editForm: {
-    padding: "30px",
-  },
-
-  assignSection: {
-    padding: "25px 30px",
-    borderTop:
-      "1px solid #e7e0d7",
-    borderBottom:
-      "1px solid #e7e0d7",
-  },
-
-  assignRow: {
-    display: "flex",
-    gap: "10px",
-    alignItems: "center",
-  },
-
-  /* COMMENTS */
-
-  commentsSection: {
-    borderTop:
-      "1px solid #e7e0d7",
-  },
-
-  addCommentSection: {
-    padding: "25px",
-    borderTop:
-      "1px solid #e7e0d7",
-  },
-
-  attachmentMessage: {
-    margin: "12px 0 0",
-    fontSize: "13px",
-    fontWeight: "bold",
-  },
-
-  attachmentList: {
-    padding: "20px",
-  },
-
-  attachmentCard: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "16px",
-    border: "1px solid #e0d9cf",
-    borderRadius: "10px",
-    padding: "16px",
-    marginBottom: "12px",
-    background: "#faf8f4",
-  },
-
-  attachmentInfo: {
-    minWidth: 0,
-  },
-
-  attachmentFileName: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#29251f",
-    overflowWrap: "anywhere",
-  },
-
-  attachmentMeta: {
-    marginTop: "5px",
-    fontSize: "12px",
-    color: "#777067",
-  },
-
-  commentFormTitle: {
-    margin: "0 0 15px",
-    fontSize: "16px",
-  },
-
-  commentCard: {
-    border:
-      "1px solid #e0d9cf",
-    borderRadius: "10px",
-    padding: "18px",
-    marginBottom: "12px",
-    background: "#faf8f4",
-  },
-
-  commentHeader: {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "flex-start",
-  },
-
-  commentUser: {
-    fontSize: "13px",
-    fontWeight: "bold",
-    color: "#29251f",
-  },
-
-  commentDate: {
-    fontSize: "11px",
-    color: "#888078",
-    marginTop: "4px",
-  },
-
-  commentText: {
-    fontSize: "14px",
-    lineHeight: "1.6",
-    color: "#49433c",
-    margin:
-      "14px 0 0",
-  },
-
-  deleteCommentButton: {
-    border:
-      "1px solid #d9a49b",
-    background: "#fff",
-    color: "#b43c32",
-    borderRadius: "6px",
-    padding: "6px 10px",
-    fontSize: "11px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-
-  /* =========================
-     RESOLUTION HISTORY
-     ========================= */
-
-  resolutionCard: {
-    border:
-      "1px solid #e0d9cf",
-    borderRadius: "10px",
-    padding: "20px",
-    marginBottom: "15px",
-    background: "#faf8f4",
-  },
-
-  resolutionHeader: {
-    display: "flex",
-    justifyContent:
-      "space-between",
-    alignItems: "flex-start",
-    marginBottom: "18px",
-  },
-
-  resolutionLabel: {
-    fontSize: "10px",
-    fontWeight: "bold",
-    letterSpacing: "1.2px",
-    color: "#888078",
-    marginBottom: "5px",
-  },
-
-  resolutionUser: {
-    fontSize: "14px",
-    fontWeight: "bold",
-    color: "#29251f",
-  },
-
-  resolutionDate: {
-    fontSize: "12px",
-    color: "#777067",
-  },
-
-  resolutionText: {
-    margin: "8px 0 15px",
-    fontSize: "14px",
-    lineHeight: "1.6",
-    color: "#49433c",
-  },
-
-  deleteResolutionButton: {
-    border:
-      "1px solid #d9a49b",
-    background: "#fff",
-    color: "#b43c32",
-    borderRadius: "6px",
-    padding: "7px 12px",
-    fontSize: "12px",
-    fontWeight: "bold",
-    cursor: "pointer",
-  },
-};
-
-export default App;

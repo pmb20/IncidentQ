@@ -35,7 +35,11 @@ import {
 } from "lucide-react";
 import "./dashboard.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (
+  typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
+    ? "https://incidentq-backend-api.onrender.com"
+    : "http://localhost:8080"
+);
 
 export default function App() {
   // ====================================================
@@ -930,7 +934,7 @@ export default function App() {
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="e.g. Manikanta"
+                      placeholder="e.g. Joe Miller"
                       value={authName}
                       onChange={(e) => setAuthName(e.target.value)}
                       required
@@ -1063,13 +1067,13 @@ export default function App() {
                   type="button"
                   className="auth-quick-pill"
                   onClick={() => {
-                    setAuthEmail("23eg107b48@anurag.edu.in");
+                    setAuthEmail("joe.miller@incidentq.com");
                     setAuthPassword("password123");
-                    showToast("Manikanta profile selected", "info");
+                    showToast("Joe Miller profile selected", "info");
                   }}
                 >
                   <User size={12} />
-                  <span>Manikanta (Commander)</span>
+                  <span>Joe Miller (Commander)</span>
                 </button>
                 <button
                   type="button"
@@ -1173,13 +1177,13 @@ export default function App() {
 
           {/* USER PROFILE BADGE */}
           <div className="user-profile-badge">
-            <div className="user-avatar">{currentUser?.name?.charAt(0) || "M"}</div>
+            <div className="user-avatar">{currentUser?.name?.charAt(0) || "J"}</div>
             <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
               <span style={{ fontWeight: 600, fontSize: "0.82rem", color: "#fff" }}>
-                {currentUser?.name || "Operations Commander"}
+                {currentUser?.name || "Joe Miller"}
               </span>
               <span style={{ fontSize: "0.68rem", color: "var(--cyan-light)" }}>
-                {currentUser?.role || "Incident Commander"}
+                {currentUser?.role || "Incident Operations Commander"}
               </span>
             </div>
             <button
@@ -1644,7 +1648,7 @@ export default function App() {
                         onChange={(e) => handleUpdateAssignee(e.target.value)}
                       >
                         <option value="">Unassigned</option>
-                        <option value="23eg107b48@anurag.edu.in">Manikanta (Incident Commander)</option>
+                        <option value="joe.miller@incidentq.com">Joe Miller (Incident Commander)</option>
                         <option value="alex.chen@incidentq.com">Alex Chen (Lead Reliability Engineer)</option>
                         <option value="sara.connor@incidentq.com">Sara Connor (Site Reliability Engineer)</option>
                         <option value="elena.rostova@incidentq.com">Elena Rostova (Principal Systems Architect)</option>
@@ -2224,7 +2228,7 @@ export default function App() {
                       value={createForm.assignee}
                       onChange={(e) => setCreateForm({ ...createForm, assignee: e.target.value })}
                     >
-                      <option value="23eg107b48@anurag.edu.in">Manikanta (Incident Commander)</option>
+                      <option value="joe.miller@incidentq.com">Joe Miller (Incident Commander)</option>
                       <option value="alex.chen@incidentq.com">Alex Chen (Lead Reliability Engineer)</option>
                       <option value="sara.connor@incidentq.com">Sara Connor (Site Reliability Engineer)</option>
                       <option value="elena.rostova@incidentq.com">Elena Rostova (Principal Systems Architect)</option>

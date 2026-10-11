@@ -132,7 +132,7 @@ The application cockpit will be accessible at `http://localhost:5173`.
 
 | Name | Role | Email | Password |
 |---|---|---|---|
-| Manikanta | Incident Operations Commander | 23eg107b48@anurag.edu.in | password123 |
+| Joe Miller | Incident Operations Commander | joe.miller@incidentq.com | password123 |
 | Alex Chen | Lead Reliability Engineer | alex.chen@incidentq.com | password123 |
 | Sara Connor | Site Reliability Engineer | sara.connor@incidentq.com | password123 |
 | Elena Rostova | Principal Systems Architect | elena.rostova@incidentq.com | password123 |
